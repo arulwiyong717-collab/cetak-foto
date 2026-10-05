@@ -946,6 +946,7 @@
         <div class="sheet-head"><b>🧩 Tata Letak Halaman</b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
         <div class="adjust-slider-row"><label>Jarak</label><input type="range" id="spacingSlider" min="0" max="10" value="2"></div>
         <div class="adjust-slider-row"><label>Margin</label><input type="range" id="marginSlider" min="0" max="30" value="5"></div>
+        <label style="display:block;margin-top:8px;font-size:12px"><input type="checkbox" id="chkAutoRotate" checked> 🔄 Putar otomatis saat Rapikan (isi ruang kosong)</label>
         <button type="button" class="btn btn-reset" style="margin-top:8px; width:100%; padding:9px;" onclick="autoArrangeAllWithHistory()">🪄 Rapikan Multi-Halaman</button>
         <p style="font-size: 10px; color: #555; margin: 8px 0 0 0;">*Setel skala printer ke <b>100%</b> atau <b>Default</b>. Simpan file .json proyek agar bisa dilanjutkan nanti (menu 📁 di atas).</p>
       </section>
@@ -1122,6 +1123,7 @@
 
     </div>
     <nav class="tool-strip" id="toolStrip">
+      <button type="button" class="tool-btn" id="btnAiDock"><span class="ti">✨</span><span class="tl">AI</span></button>
       <button type="button" class="tool-btn" id="tool_add" onclick="openToolSheet('add')"><span class="ti">➕</span><span class="tl">Tambah</span></button>
       <button type="button" class="tool-btn" id="tool_queue" onclick="openToolSheet('queue')"><span class="ti">📋</span><span class="tl">Antrean</span></button>
       <button type="button" class="tool-btn" id="tool_layout" onclick="openToolSheet('layout')"><span class="ti">🧩</span><span class="tl">Tata Letak</span></button>
@@ -2947,6 +2949,68 @@
     }
 
     /* MENATAI KESELURUHAN JIKA DITEKAN TOMBOL 'RAPIKAN MULTI-HALAMAN' ATAU GESER SLIDER */
+    /* [v24] Penempatan pintar untuk Rapikan:
+       - Foto dicoba 2 orientasi (potret/lanskap); dipakai yang memberi posisi lebih awal (halaman lebih depan / lebih atas),
+         jadi ruang kosong terisi. Seri imbang = tidak diputar. Bisa dimatikan lewat centang "Putar otomatis".
+       - Foto yang tak muat di area cetak (A4 penuh, 8R, A4 yang terlanjur diputar) ditaruh di halaman kosong sendiri,
+         dipilih orientasi yang paling sedikit melebihi kertas. */
+    function flipOrient(inst) {
+      var r = ((inst.rotation || 0) % 360 + 360) % 360;
+      var deg = (r === 90) ? -90 : 90;
+      if (inst.type === 'photo' && typeof rotatePanVector === 'function') {
+        var rp = rotatePanVector(inst.panX || 0, inst.panY || 0, deg);
+        inst.panX = rp.x; inst.panY = rp.y;
+      }
+      var tmp = inst.w; inst.w = inst.h; inst.h = tmp;
+      inst.rotation = ((inst.rotation || 0) + deg + 360) % 360;
+    }
+
+    function placeInstSmart(inst, b, m, sp, pr) {
+      var bw = b.right - b.left, bh = b.bottom - b.top;
+      var chk = document.getElementById('chkAutoRotate');
+      var canRot = inst.type === 'photo' && Math.abs(inst.w - inst.h) > 1 && (!chk || chk.checked);
+      function ov(a, c) {
+        return !(a.x + a.w + sp <= c.x + 0.001 || a.x >= c.x + c.w + sp - 0.001 ||
+                 a.y + a.h + sp <= c.y + 0.001 || a.y >= c.y + c.h + sp - 0.001);
+      }
+      function fits(r, p) {
+        if (r.x < b.left + m - 0.001 || r.x + r.w > b.right - m + 0.001) return false;
+        if (r.y < b.top + m - 0.001 || r.y + r.h > b.bottom - m + 0.001) return false;
+        var e = pr[p] || [];
+        for (var i = 0; i < e.length; i++) if (ov(r, e[i])) return false;
+        return true;
+      }
+      function find(w, h) {
+        var lim = placedInstances.length + 3;
+        for (var p = 0; p < lim; p++) {
+          var pts = [{ x: b.left + m, y: b.top + m }];
+          (pr[p] || []).forEach(function(r) {
+            pts.push({ x: r.x + r.w + sp, y: r.y }, { x: b.left + m, y: r.y + r.h + sp },
+                     { x: r.x, y: r.y + r.h + sp }, { x: r.x + r.w + sp, y: r.y + r.h + sp });
+          });
+          pts.sort(function(a, c) { return Math.abs(a.y - c.y) > 0.5 ? a.y - c.y : a.x - c.x; });
+          for (var i = 0; i < pts.length; i++) {
+            if (fits({ x: pts[i].x, y: pts[i].y, w: w, h: h }, p)) return { p: p, x: pts[i].x, y: pts[i].y };
+          }
+        }
+        return null;
+      }
+      var A = find(inst.w, inst.h), B = canRot ? find(inst.h, inst.w) : null, pick = A;
+      if (B && (!A || B.p < A.p || (B.p === A.p && B.y < A.y - 0.5))) { pick = B; flipOrient(inst); }
+      if (!pick) {
+        var pp = 0;
+        while (pr[pp] && pr[pp].length) pp++;
+        var ovU = Math.max(0, inst.w - bw) + Math.max(0, inst.h - bh);
+        var ovR = Math.max(0, inst.h - bw) + Math.max(0, inst.w - bh);
+        if (inst.type === 'photo' && Math.abs(inst.w - inst.h) > 1 && ovR < ovU) flipOrient(inst);
+        pick = { p: pp, x: b.left + Math.max(0, (bw - inst.w) / 2), y: b.top + Math.max(0, (bh - inst.h) / 2) };
+      }
+      inst.pageIndex = pick.p; inst.leftMm = pick.x; inst.topMm = pick.y;
+      if (!pr[pick.p]) pr[pick.p] = [];
+      pr[pick.p].push({ x: pick.x, y: pick.y, w: inst.w, h: inst.h });
+      return true;
+    }
+
     function autoArrangeAll() {
       var spacing = parseFloat(document.getElementById('spacingSlider').value) || 2;
       var margin = parseFloat(document.getElementById('marginSlider').value) || 5;
@@ -2986,7 +3050,8 @@
         var placed = false;
         var p = 0;
         var safetyCounter = 0;
-        var maxPageAttempts = 500; // batas aman agar tidak membekukan browser jika ukuran item tidak wajar
+        var maxPageAttempts = placedInstances.length + 3; // batas aman: item yang muat selalu dapat tempat di halaman kosong berikutnya
+        if (placeInstSmart(inst, bounds, margin, spacing, pagesRects)) return; // [v24] penempatan pintar (putar otomatis + foto besar)
 
         while (!placed) {
           safetyCounter++;
@@ -3076,7 +3141,8 @@
         var placed = false;
         var p = 0;
         var safetyCounter = 0;
-        var maxPageAttempts = 500; // batas aman agar tidak membekukan browser jika ukuran item tidak wajar
+        var maxPageAttempts = placedInstances.length + 3; // batas aman: item yang muat selalu dapat tempat di halaman kosong berikutnya
+        if (placeInstSmart(inst, bounds, margin, spacing, pagesRects)) return; // [v24] penempatan pintar (putar otomatis + foto besar)
 
         while (!placed) {
           safetyCounter++;
@@ -5397,74 +5463,212 @@
   })();
   </script>
 
-<!-- ===== [v19] ASISTEN AI PERINTAH — tambahan murni, tidak mengubah fitur lama ===== -->
+<!-- ===== [v21] ASISTEN AI PERINTAH — tambahan murni, tidak mengubah fitur lama ===== -->
 <style>
-#aiFab{position:fixed;right:12px;bottom:96px;z-index:9000;background:#6d28d9;color:#fff;border:none;border-radius:24px;padding:10px 16px;font-size:14px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer}
-#aiPanel{display:none;position:fixed;right:12px;bottom:146px;z-index:9001;width:min(340px,calc(100vw - 24px));background:#1f2330;color:#eee;border-radius:14px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);font-size:13px}
+#aiPanel{display:none;position:fixed;left:8px;right:8px;bottom:120px;z-index:9001;max-height:60vh;overflow:auto;background:#1f2330;color:#eee;border-radius:14px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);font-size:13px}
 #aiPanel.show{display:block}
 #aiPanel textarea{width:100%;box-sizing:border-box;height:70px;border-radius:8px;border:1px solid #444;background:#12141c;color:#fff;padding:8px;font-size:13px;resize:none}
 #aiPanel button{border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:13px}
 #aiPlan{margin-top:8px;max-height:200px;overflow:auto}
 #aiPlan ol{margin:6px 0 6px 18px;padding:0}
-@media print{#aiFab,#aiPanel{display:none!important}}
+#aiToast{display:none;position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9100;background:#16a34a;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+@media print{#aiPanel,#aiToast{display:none!important}}
 </style>
-<button id="aiFab" class="app-chrome" type="button">✨ AI</button>
 <div id="aiPanel" class="app-chrome">
-  <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Asisten AI</b><a href="#" id="aiKeyLink" style="color:#9ec5fe;font-size:11px">Atur API Key</a></div>
-  <textarea id="aiCmd" placeholder="Contoh: sisa kertas 5x5 cm, semua foto jadi 3x4 sebanyak 6, rapikan"></textarea>
-  <div style="margin-top:6px"><button id="aiSend" type="button" style="background:#6d28d9;color:#fff">Kirim</button></div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Asisten AI</b><span><a href="#" id="aiKeyLink" style="color:#9ec5fe;font-size:11px">Atur API Key</a> &nbsp;<button id="aiClose" type="button" style="background:#444;color:#fff;padding:2px 8px">✕</button></span></div>
+  <div id="aiList" style="margin-bottom:6px;font-size:12px"></div>
+  <textarea id="aiCmd" placeholder="Contoh: foto 1 ukuran 3x4 sebanyak 2, foto 2 ukuran 4x6 sebanyak 3, rapikan"></textarea>
+  <div style="margin-top:6px;display:flex;gap:6px"><button id="aiSend" type="button" style="background:#6d28d9;color:#fff">Kirim</button><button id="aiClear" type="button" style="background:#444;color:#fff">Hapus teks</button></div>
   <div id="aiPlan"></div>
 </div>
+<div id="aiToast"></div>
 <script>
 (function(){
   var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-flash-latest','gemini-flash-lite-latest','gemini-2.5-flash'], plan=null;
-  var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Aksi yang boleh: {"a":"sisa_kertas","aktif":true/false,"w":cm,"h":cm} | {"a":"ukuran","foto":nomor atau "semua","w":cm,"h":cm} | {"a":"jumlah","foto":nomor atau "semua","n":angka} | {"a":"jarak","n":0-10} | {"a":"margin","n":0-30} | {"a":"putar","deg":90 atau -90 atau 180} | {"a":"rapikan"} | {"a":"export","fmt":"pdf" atau "jpg" atau "png"}. Urutan langkah: sisa_kertas, ukuran, jumlah, jarak/margin, putar, rapikan, export. Tambahkan rapikan jika pengguna minta rapi. Jika perintah tidak jelas atau di luar kemampuan, langkah=[] dan jelaskan di ringkas. Jangan mengarang aksi lain.';
+  var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Target "t": "semua" (semua foto), nomor foto (1,2,..), "teks" (semua teks), atau "objek" (foto+teks). Default t="semua". Aksi yang boleh: '+
+  '{"a":"sisa_kertas","aktif":bool,"w":cm,"h":cm} {"a":"ukuran","t":..,"w":cm,"h":cm} {"a":"jumlah","t":..,"n":1-200} {"a":"jarak","n":0-10} {"a":"margin","n":0-30} {"a":"rapikan"} {"a":"hapus","t":..} {"a":"duplikat","t":..} '+
+  '{"a":"putar","t":..,"deg":90|-90|180} {"a":"balik","t":..} {"a":"rata","t":..,"tipe":"left|right|top|bottom|centerH|centerV"} {"a":"layer","t":..,"arah":"up|down"} '+
+  '{"a":"bentuk","t":..,"mode":"oval|kotak|bulat","radius":0-100} {"a":"sesuaikan","t":..,"kunci":"temperature|tint|brightness|contrast|highlights|saturation|sharpness","n":-100..100} {"a":"garis","t":..,"aktif":bool,"tebal":0.2-3,"warna":"#hex"} {"a":"warna_bg","t":..,"hex":"#hex"} '+
+  '{"a":"teks_tambah","isi":"..","ukuran":6-200,"warna":"#hex","tebal":bool} {"a":"teks_ubah","no":nomor teks atau "semua","isi":"..","ukuran":n,"warna":"#hex","tebal":bool} '+
+  '{"a":"zoom","n":25-400} {"a":"undo"} {"a":"redo"} {"a":"tab_baru"} {"a":"cetak"} {"a":"export","fmt":"pdf|jpg|png"}. '+
+  '{"a":"muat_satu_halaman","n":jumlah foto (opsional)} = semua foto dikecilkan (jika perlu) dan ditata rapi dalam 1 halaman. {"a":"bagi_kertas","t":..,"w":cm,"h":cm,"kolom":n,"baris":n} = kertas w x h dibagi kolom x baris bagian sama besar (untuk dipotong), foto dipasang di tengah tiap bagian (A6 "dibagi dua" = kolom 1, baris 2). '+
+  'Ukuran baku: KTP/ATM/SIM=8.56x5.4, A7=7.4x10.5, A6=10.5x14.8, A5=14.8x21, A4=21x29.7, 3R=8.9x12.7, 4R=10.2x15.2. "orang/foto pertama, kedua, ketiga" = nomor 1,2,3 urut antrean; t boleh daftar [1,3]; foto dengan ukuran berbeda = langkah terpisah per nomor. Jika jumlah foto kurang dari jumlah bagian, tambah langkah jumlah. '+
+  'Urutan: sisa_kertas, ukuran, jumlah, tampilan foto (bentuk/sesuaikan/garis/warna_bg/putar/balik), teks, jarak/margin, rapikan ATAU muat_satu_halaman ATAU bagi_kertas, lalu cetak/export terakhir. Tambahkan rapikan jika pengguna minta rapi. Hapus background otomatis, crop manual, simpan proyek TIDAK didukung: jelaskan di ringkas. Jika tidak jelas, langkah=[]. Jangan mengarang aksi.';
   function $(i){return document.getElementById(i);}
   function photos(){return queueItems.filter(function(q){return q.type==='photo';});}
+  function texts(){return queueItems.filter(function(q){return q.type==='text';});}
   function getKey(){try{return localStorage.getItem(KEY)||'';}catch(e){return '';}}
   function askKey(){var k=prompt('Tempel API Key Gemini (disimpan di browser perangkat ini saja):',getKey());if(k!==null){try{localStorage.setItem(KEY,k.trim());}catch(e){}}}
   function num(v,lo,hi){v=parseFloat(v);return isNaN(v)?null:Math.min(hi,Math.max(lo,v));}
-  function targets(f){var p=photos();if(f==null||f==='semua')return p;var q=p[parseInt(f,10)-1];return q?[q]:[];}
+  function hex(v){return /^#[0-9a-fA-F]{6}$/.test(v||'')?v:null;}
+  function ids(t){return Array.isArray(t)?t:[t];}
+  function uniq(out,r){r.forEach(function(i){if(out.indexOf(i)<0)out.push(i);});}
+  function T(t){
+    var out=[];
+    ids(t).forEach(function(x){
+      var r;
+      if(x==null||x==='semua')r=placedInstances.filter(function(i){return i.type==='photo';});
+      else if(x==='teks')r=placedInstances.filter(function(i){return i.type==='text';});
+      else if(x==='objek')r=placedInstances.slice();
+      else{var q=photos()[parseInt(x,10)-1];r=q?placedInstances.filter(function(i){return i.parentId===q.id;}):[];}
+      uniq(out,r);
+    });
+    return out;
+  }
+  function Q(t){
+    var out=[];
+    ids(t).forEach(function(x){
+      var r;
+      if(x==='teks')r=texts();
+      else{var P=photos();if(x==null||x==='semua')r=P;else{var q=P[parseInt(x,10)-1];r=q?[q]:[];}}
+      uniq(out,r);
+    });
+    return out;
+  }
+  function sel(t){selectedInstanceIds=T(t).map(function(i){return i.instId;});}
+  function unsel(){selectedInstanceIds=[];redrawCanvas();}
   function clean(s){
-    var a=s&&s.a,o={a:a};
+    if(!s)return null;var a=s.a,o={a:a,t:s.t==null?'semua':s.t};
+    if(['rapikan','undo','redo','tab_baru','cetak'].indexOf(a)>=0)return o;
+    if(['hapus','duplikat','balik'].indexOf(a)>=0)return o;
     if(a==='sisa_kertas'){o.aktif=!!s.aktif;o.w=num(s.w,0.5,21);o.h=num(s.h,0.5,29.7);}
-    else if(a==='ukuran'){o.foto=s.foto;o.w=num(s.w,0.5,28);o.h=num(s.h,0.5,28);if(!o.w||!o.h)return null;}
-    else if(a==='jumlah'){o.foto=s.foto;o.n=num(s.n,1,200);if(!o.n)return null;o.n=Math.round(o.n);}
+    else if(a==='ukuran'){o.w=num(s.w,0.5,28);o.h=num(s.h,0.5,28);if(!o.w||!o.h)return null;}
+    else if(a==='jumlah'){o.n=num(s.n,1,200);if(!o.n)return null;o.n=Math.round(o.n);}
     else if(a==='jarak'){o.n=num(s.n,0,10);if(o.n===null)return null;}
     else if(a==='margin'){o.n=num(s.n,0,30);if(o.n===null)return null;}
     else if(a==='putar'){o.deg=[90,-90,180].indexOf(+s.deg)>=0?+s.deg:null;if(o.deg===null)return null;}
-    else if(a==='rapikan'){}
+    else if(a==='rata'){o.tipe=['left','right','top','bottom','centerH','centerV'].indexOf(s.tipe)>=0?s.tipe:null;if(!o.tipe)return null;}
+    else if(a==='layer'){o.arah=s.arah==='down'?'down':'up';}
+    else if(a==='bentuk'){o.mode=['oval','kotak','bulat'].indexOf(s.mode)>=0?s.mode:null;if(!o.mode)return null;o.radius=num(s.radius,0,100);if(o.radius===null)o.radius=30;}
+    else if(a==='sesuaikan'){o.kunci=ADJUST_KEYS.indexOf(s.kunci)>=0?s.kunci:null;o.n=num(s.n,-100,100);if(!o.kunci||o.n===null)return null;}
+    else if(a==='garis'){o.aktif=s.aktif!==false;o.tebal=num(s.tebal,0.2,3)||1;o.warna=hex(s.warna)||'#000000';}
+    else if(a==='warna_bg'){o.hex=hex(s.hex);if(!o.hex)return null;}
+    else if(a==='teks_tambah'||a==='teks_ubah'){o.isi=s.isi==null?null:String(s.isi).slice(0,200);o.ukuran=num(s.ukuran,6,200);o.warna=hex(s.warna);o.tebal=s.tebal==null?null:!!s.tebal;o.no=s.no==null?'semua':s.no;}
+    else if(a==='zoom'){o.n=num(s.n,25,400);if(!o.n)return null;}
     else if(a==='export'){o.fmt=['pdf','jpg','png'].indexOf(s.fmt)>=0?s.fmt:null;if(!o.fmt)return null;}
+    else if(a==='muat_satu_halaman'){o.n=num(s.n,1,100)||0;}
+    else if(a==='bagi_kertas'){o.w=num(s.w,0.5,21);o.h=num(s.h,0.5,29.7);o.kolom=Math.round(num(s.kolom,1,10)||1);o.baris=Math.round(num(s.baris,1,10)||1);if(!o.w||!o.h)return null;}
     else return null;
     return o;
   }
   function desc(s){
-    var t=s.foto==null||s.foto==='semua'?'semua foto':'foto ke-'+s.foto;
+    var t=Array.isArray(s.t)?'foto '+s.t.join(', '):s.t==='semua'?'semua foto':s.t==='teks'?'semua teks':s.t==='objek'?'semua objek':'foto ke-'+s.t;
     switch(s.a){
       case 'sisa_kertas':return s.aktif?'Aktifkan Sisa Kertas '+(s.w||scrapGuide.wCm)+' x '+(s.h||scrapGuide.hCm)+' cm':'Matikan Sisa Kertas';
       case 'ukuran':return 'Ukuran '+t+' → '+s.w+' x '+s.h+' cm';
       case 'jumlah':return 'Jumlah '+t+' → '+s.n+' lembar';
       case 'jarak':return 'Jarak → '+s.n;
       case 'margin':return 'Margin → '+s.n;
-      case 'putar':return 'Putar semua '+s.deg+'°';
       case 'rapikan':return 'Rapikan otomatis';
+      case 'hapus':return 'HAPUS '+t;
+      case 'duplikat':return 'Gandakan '+t;
+      case 'putar':return 'Putar '+t+' '+s.deg+'°';
+      case 'balik':return 'Balik (mirror) '+t;
+      case 'rata':return 'Ratakan '+t+': '+s.tipe;
+      case 'layer':return 'Layer '+t+' → '+(s.arah==='up'?'naik':'turun');
+      case 'bentuk':return 'Bentuk '+t+' → '+s.mode+(s.mode==='bulat'?' ('+s.radius+'%)':'');
+      case 'sesuaikan':return 'Sesuaikan '+t+': '+s.kunci+' '+s.n;
+      case 'garis':return s.aktif?'Garis pembatas '+t+' '+s.tebal+'mm '+s.warna:'Matikan garis pembatas '+t;
+      case 'warna_bg':return 'Warna background '+t+' → '+s.hex;
+      case 'teks_tambah':return 'Tambah teks'+(s.isi?' "'+s.isi+'"':'');
+      case 'teks_ubah':return 'Ubah teks '+(s.no==='semua'?'semua':'ke-'+s.no)+(s.isi?' → "'+s.isi+'"':'');
+      case 'muat_satu_halaman':return 'Muat semua foto dalam 1 halaman'+(s.n?' ('+s.n+' foto)':'');
+      case 'bagi_kertas':return 'Kertas '+s.w+' x '+s.h+' cm dibagi '+s.kolom+' x '+s.baris+' bagian, '+t+' di tengah tiap bagian';
+      case 'zoom':return 'Zoom tampilan '+s.n+'%';
+      case 'undo':return 'Undo';case 'redo':return 'Redo';
+      case 'tab_baru':return 'Buka tab kerja baru';
+      case 'cetak':return 'Cetak';
       case 'export':return 'Export '+s.fmt.toUpperCase();
     }
   }
   function setSlider(id,v){var e=$(id);e.value=v;e.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('change'));}
+  function photoInsts(t){return T(t).filter(function(i){return i.type==='photo';});}
   function run(s){
-    if(s.a==='sisa_kertas'){
-      scrapGuide.enabled=s.aktif;
-      if(s.w)scrapGuide.wCm=s.w; if(s.h)scrapGuide.hCm=s.h;
+    var a=s.a,L;
+    if(a==='sisa_kertas'){
+      scrapGuide.enabled=s.aktif;if(s.w)scrapGuide.wCm=s.w;if(s.h)scrapGuide.hCm=s.h;
       $('scrapGuideEnabled').checked=scrapGuide.enabled;$('scrapGuideW').value=scrapGuide.wCm;$('scrapGuideH').value=scrapGuide.hCm;
       updateScrapGuideOverlay();scheduleAutoSave();
-    }else if(s.a==='ukuran'){targets(s.foto).forEach(function(q){changeQueueItemSize(q.id,s.w,s.h,s.w+'x'+s.h+' cm');});}
-    else if(s.a==='jumlah'){targets(s.foto).forEach(function(q){updateQueueQty(q.id,s.n);});}
-    else if(s.a==='jarak'){setSlider('spacingSlider',s.n);}
-    else if(s.a==='margin'){setSlider('marginSlider',s.n);}
-    else if(s.a==='putar'){selectedInstanceIds=placedInstances.map(function(i){return i.instId;});rotateSelected(s.deg);selectedInstanceIds=[];redrawCanvas();}
-    else if(s.a==='rapikan'){autoArrangeAllWithHistory();}
-    else if(s.a==='export'){runExport(s.fmt);}
+    }
+    else if(a==='ukuran'){Q(s.t).forEach(function(q){changeQueueItemSize(q.id,s.w,s.h,s.w+'x'+s.h+' cm');});}
+    else if(a==='jumlah'){Q(s.t).forEach(function(q){updateQueueQty(q.id,s.n);});}
+    else if(a==='jarak'){setSlider('spacingSlider',s.n);}
+    else if(a==='margin'){setSlider('marginSlider',s.n);}
+    else if(a==='rapikan'){autoArrangeAllWithHistory();}
+    else if(a==='hapus'){sel(s.t);if(selectedInstanceIds.length)deleteSelectedInstances();}
+    else if(a==='duplikat'){sel(s.t);if(selectedInstanceIds.length)duplicateSelectedInstances();unsel();}
+    else if(a==='putar'){sel(s.t);if(selectedInstanceIds.length)rotateSelected(s.deg);unsel();}
+    else if(a==='balik'){sel(s.t);flipSelected();unsel();}
+    else if(a==='rata'){sel(s.t);alignSelected(s.tipe);unsel();}
+    else if(a==='layer'){sel(s.t);if(selectedInstanceIds.length)moveLayerSelected(s.arah);unsel();}
+    else if(a==='bentuk'){
+      L=photoInsts(s.t);if(!L.length)return;saveState();
+      L.forEach(function(i){i.oval=s.mode==='oval';i.cornerRadius=s.mode==='bulat'?s.radius:0;syncSiblingInstances(i,['cornerRadius','oval']);});redrawCanvas();
+    }
+    else if(a==='sesuaikan'){
+      L=photoInsts(s.t);if(!L.length)return;saveState();
+      L.forEach(function(i){var b={};ADJUST_KEYS.forEach(function(k){b[k]=(i.adjust&&i.adjust[k])||0;});b[s.kunci]=s.n;i.adjust=b;syncSiblingInstances(i,['adjust']);});redrawCanvas();
+    }
+    else if(a==='garis'){
+      L=photoInsts(s.t);if(!L.length)return;saveState();
+      L.forEach(function(i){i.border={enabled:s.aktif,thickness:s.tebal,color:s.warna};syncSiblingInstances(i,['border']);});redrawCanvas();
+    }
+    else if(a==='warna_bg'){
+      L=photoInsts(s.t).filter(function(i){return i.bgTransparentSrc;});
+      if(!L.length)throw new Error('background foto belum dihapus (hapus dulu lewat editor foto)');
+      L.forEach(function(i){activeInstanceIndex=placedInstances.indexOf(i);selectBgColorForActive(s.hex);});activeInstanceIndex=null;
+    }
+    else if(a==='teks_tambah'){
+      processTextAdd();var q=queueItems[queueItems.length-1];
+      if(s.isi)updateTextProperty(q.id,'text',s.isi);if(s.ukuran)updateTextProperty(q.id,'fontSize',s.ukuran);
+      if(s.warna)updateTextProperty(q.id,'color',s.warna);if(s.tebal)updateTextProperty(q.id,'isBold',true);
+    }
+    else if(a==='teks_ubah'){
+      L=texts();if(s.no!=='semua')L=L.slice(parseInt(s.no,10)-1,parseInt(s.no,10));
+      if(!L.length)throw new Error('teks tidak ditemukan');
+      L.forEach(function(q){
+        if(s.isi!=null)updateTextProperty(q.id,'text',s.isi);if(s.ukuran)updateTextProperty(q.id,'fontSize',s.ukuran);
+        if(s.warna)updateTextProperty(q.id,'color',s.warna);
+        if(s.tebal!=null&&!!q.isBold!==s.tebal)updateTextProperty(q.id,'isBold',true);
+      });
+    }
+    else if(a==='muat_satu_halaman'){
+      var L0=placedInstances.filter(function(i){return i.type==='photo';});
+      if(!L0.length)throw new Error('belum ada foto');
+      var N=Math.max(s.n||0,L0.length),m=parseFloat($('marginSlider').value)||5,sp=parseFloat($('spacingSlider').value)||2;
+      var b=getArrangeBounds(),bw=b.right-b.left-2*m,bh=b.bottom-b.top-2*m,best=null;
+      for(var c=1;c<=N;c++){
+        var r=Math.ceil(N/c),cw=(bw-(c-1)*sp)/c,ch=(bh-(r-1)*sp)/r,k=1e9;
+        L0.forEach(function(i){k=Math.min(k,cw/i.w,ch/i.h);});
+        if(!best||k>best.k)best={k:k,c:c,r:r,cw:cw,ch:ch};
+      }
+      if(best.k<=0.05)throw new Error('area kertas terlalu kecil');
+      saveState();
+      var sc=Math.min(1,best.k);
+      if(sc<0.999)photos().forEach(function(q){changeQueueItemSize(q.id,Math.round(q.wCm*sc*100)/100,Math.round(q.hCm*sc*100)/100,'Muat 1 halaman');});
+      placedInstances.filter(function(i){return i.type==='photo';}).forEach(function(i,n){
+        var col=n%best.c,row=Math.floor(n/best.c);
+        i.pageIndex=0;i.leftMm=b.left+m+col*(best.cw+sp)+(best.cw-i.w)/2;i.topMm=b.top+m+row*(best.ch+sp)+(best.ch-i.h)/2;
+      });
+      renderQueueTable();redrawCanvas();scheduleAutoSave();
+    }
+    else if(a==='bagi_kertas'){
+      L=photoInsts(s.t);if(!L.length)throw new Error('belum ada foto');
+      var cells=s.kolom*s.baris,cw2=s.w*10/s.kolom,ch2=s.h*10/s.baris,x0=(210-s.w*10)/2;
+      L=L.slice(0,cells);
+      var bad=L.filter(function(i){return i.w>cw2+0.01||i.h>ch2+0.01;});
+      if(bad.length)throw new Error('foto '+(bad[0].w/10).toFixed(1)+'x'+(bad[0].h/10).toFixed(1)+' cm lebih besar dari tiap bagian kertas ('+(cw2/10).toFixed(1)+'x'+(ch2/10).toFixed(1)+' cm)');
+      saveState();
+      scrapGuide.enabled=true;scrapGuide.wCm=s.w;scrapGuide.hCm=s.h;
+      $('scrapGuideEnabled').checked=true;$('scrapGuideW').value=s.w;$('scrapGuideH').value=s.h;updateScrapGuideOverlay();
+      L.forEach(function(i,n){var col=n%s.kolom,row=Math.floor(n/s.kolom);i.pageIndex=0;i.leftMm=x0+col*cw2+(cw2-i.w)/2;i.topMm=row*ch2+(ch2-i.h)/2;});
+      renderQueueTable();redrawCanvas();scheduleAutoSave();
+    }
+    else if(a==='zoom'){setViewZoom(s.n);}
+    else if(a==='undo'){undo();}else if(a==='redo'){redo();}
+    else if(a==='tab_baru'){addNewTab();}
+    else if(a==='cetak'){$('btnPrint').click();}
+    else if(a==='export'){runExport(s.fmt);}
   }
   function gcall(body,i,n){
     i=i||0;n=n||0;
@@ -5481,13 +5685,17 @@
   }
   function show(html){$('aiPlan').innerHTML=html;}
   function esc(t){return String(t).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  function state(){
+    return JSON.stringify({foto:photos().map(function(q,i){var ins=placedInstances.filter(function(x){return x.parentId===q.id;})[0]||{};return {no:i+1,ukuran:q.wCm+'x'+q.hCm,jumlah:q.qty,bg_sudah_dihapus:!!ins.bgTransparentSrc};}),
+      teks:texts().map(function(q,i){return {no:i+1,isi:q.text};}),sisa_kertas:scrapGuide});
+  }
   function send(){
     var cmd=$('aiCmd').value.trim();if(!cmd)return;
     if(!getKey()){askKey();if(!getKey())return;}
     show('Memproses…');plan=null;
     gcall(JSON.stringify({systemInstruction:{parts:[{text:SYS}]},
-        contents:[{role:'user',parts:[{text:'Keadaan: '+JSON.stringify({foto:photos().map(function(q,i){return {no:i+1,ukuran:q.wCm+'x'+q.hCm,jumlah:q.qty};}),sisa_kertas:scrapGuide})+'\nPerintah: '+cmd}]}],
-        generationConfig:{responseMimeType:'application/json',temperature:0}}))
+      contents:[{role:'user',parts:[{text:'Keadaan: '+state()+'\nPerintah: '+cmd}]}],
+      generationConfig:{responseMimeType:'application/json',temperature:0}}))
     .then(function(d){
       var j=JSON.parse(d.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
       var steps=(j.langkah||[]).map(clean).filter(Boolean);
@@ -5497,15 +5705,32 @@
         '<button id="aiGo" type="button" style="background:#16a34a;color:#fff">Jalankan</button> <button id="aiNo" type="button" style="background:#444;color:#fff">Batal</button>');
       $('aiGo').onclick=function(){
         var p=plan;plan=null;var err=[];
-        p.forEach(function(s){try{run(s);}catch(e){err.push(desc(s));}});
-        show(err.length?'Selesai, tapi gagal: '+esc(err.join(', ')):'Selesai ✔ (bisa di-Undo)');
+        p.forEach(function(s){try{run(s);}catch(e){err.push(desc(s)+' ('+e.message+')');}});
+        renderList();$('aiCmd').value='';
+        if(err.length){show('Selesai, tapi gagal: '+esc(err.join('; ')));}
+        else{show('');closePanel();toast('Selesai ✔ (bisa di-Undo)');}
       };
       $('aiNo').onclick=function(){plan=null;show('');};
     }).catch(function(e){show(e.busy?esc(e.message):'Gagal: '+esc(e.message));});
   }
-  $('aiFab').onclick=function(){$('aiPanel').classList.toggle('show');};
+  function renderList(){
+    var P=photos();
+    $('aiList').innerHTML=P.length?P.map(function(q,i){return '<span style="display:inline-flex;align-items:center;gap:4px;margin:0 8px 4px 0"><img src="'+q.src+'" style="width:26px;height:26px;object-fit:cover;border-radius:4px"> <b>'+(i+1)+'</b> '+q.wCm+'x'+q.hCm+' ×'+q.qty+'</span>';}).join(''):'Belum ada foto di antrean.';
+  }
+  function toast(t){var e=$('aiToast');e.textContent=t;e.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(function(){e.style.display='none';},3500);}
+  function closePanel(){$('aiPanel').classList.remove('show');}
+  function openPanel(){
+    if(typeof closeAllSheets==='function')try{closeAllSheets();}catch(e){}
+    var d=$('dock'),top=d?d.getBoundingClientRect().top:window.innerHeight;
+    $('aiPanel').style.bottom=(window.innerHeight-top+8)+'px';
+    renderList();$('aiPanel').classList.add('show');
+  }
+  $('btnAiDock').onclick=function(){if($('aiPanel').classList.contains('show'))closePanel();else openPanel();};
+  $('aiClose').onclick=closePanel;
   $('aiKeyLink').onclick=function(e){e.preventDefault();askKey();};
   $('aiSend').onclick=send;
+  $('aiClear').onclick=function(){$('aiCmd').value='';show('');$('aiCmd').focus();};
+  $('aiCmd').addEventListener('focus',function(){this.select();});
 })();
 </script>
 
