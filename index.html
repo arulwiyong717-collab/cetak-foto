@@ -1,5 +1,84 @@
 <!DOCTYPE html>
 <html lang="id">
+<!--
+=====================================================================
+CATATAN SERAH-TERIMA UNTUK AI BERIKUTNYA  (baca ini dulu sebelum mengubah apa pun)
+Proyek : "Layout Cetak Foto & Teks" — aplikasi HTML 1 file (index.html), jalan di browser HP/laptop.
+Pemilik: Aula (bahasa Indonesia, jawab dan beri label UI dalam bahasa Indonesia).
+
+ATURAN KERJA DARI PEMILIK
+1. Fitur yang SUDAH ADA tidak boleh diubah perilakunya. Hanya mengganti/menambah fitur yang disepakati bersama.
+2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v29]. Versi terakhir: v29.
+3. Pemilik sering memberi perintah lewat suara/ketikan yang berantakan; tafsirkan maksudnya, tanyakan hanya jika benar-benar ambigu.
+4. Selalu serahkan file index.html utuh di akhir, dan perbarui catatan ini.
+
+PETA FITUR (semua di 1 file)
+- Antrean foto/teks: queueItems (foto & teks) -> placedInstances (salinan yang tampak di kertas, ukuran mm, kertas A4 210x297).
+- Rapikan: autoArrangeAll / autoArrangeSpecific / placeInstSmart; area dari getArrangeBounds() (ikut Sisa Kertas bila aktif).
+- Tab kerja (maks 5, tersimpan otomatis), Simpan/Buka Proyek .json, Ukuran Saya (localStorage), Export PDF/JPG/PNG, Cetak.
+- Editor foto (crop/zoom/putar), Sesuaikan, Garis pembatas, Bentuk (oval/sudut bulat), Hapus background (remove.bg, butuh API key).
+- Lisensi/trial dicek ke server Google Apps Script.
+- Asisten AI Perintah ([v21], tombol ✨ AI, blok script paling bawah): Gemini menerjemahkan perintah jadi JSON langkah,
+  lalu run(s) menjalankannya. Daftar aksi ada di konstanta SYS + fungsi clean() + desc() + run(). Tiga tempat ini
+  HARUS selalu diubah bersamaan kalau menambah aksi baru.
+
+YANG DIKERJAKAN DI v29 (langkah c: tautan pindah pengaturan)
+- Panel ✨ AI kini punya tautan "Salin Tautan Pengaturan" (di sebelah "Atur API Key"). Isinya API key Gemini, API key remove.bg, dan daftar Ukuran Saya,
+  dikodekan base64 di bagian #pindah=... pada alamat aplikasi (bagian # tidak dikirim ke server).
+- Dibuka di perangkat lain: muncul konfirmasi, lalu key dimasukkan (menimpa key lama di perangkat itu) dan Ukuran Saya digabung tanpa duplikat (maks 30). Alamat dibersihkan setelahnya.
+- Penting: tautan berisi API key (bukan enkripsi) -> kirim ke diri sendiri saja. Kalau app dibuka dari file lokal, tautan tidak bisa dipakai di perangkat lain (butuh alamat web, mis. Netlify).
+- Belum dites di browser sungguhan. Tes: HP salin tautan -> kirim ke WA sendiri -> buka di PC -> Ok -> cek Atur API Key & Ukuran Saya.
+- Kandidat berikutnya: cadangan di cloud (Firebase) bila ingin sinkron otomatis.
+
+YANG DIKERJAKAN DI v28 (langkah b: stabilitas AI, hanya fungsi gcall + daftar MODELS)
+- Mode berpikir Gemini dimatikan (thinkingBudget 0); kalau model menolak field itu (HTTP 400), otomatis diulang tanpa field tsb.
+- Urutan model: gemini-2.5-flash, gemini-flash-latest, gemini-2.5-flash-lite, gemini-flash-lite-latest. 404 (model hilang) langsung lompat ke berikutnya.
+- 503/500/timeout: coba ulang 2x per model dengan jeda 2 dtk lalu 4 dtk, baru ganti model. 429 (kuota): langsung ganti model, tanpa coba ulang.
+- Batas waktu 20 detik per permintaan. Kode error asli tampil di pesan (503 = server penuh, 429 = kuota key habis, 401/403 = key salah).
+- Belum dites di browser sungguhan. RENCANA berikutnya: (c) tautan pindah pengaturan (API key + Ukuran Saya).
+
+YANG DIKERJAKAN DI v27 (langkah a: ringkas perintah AI)
+- Daftar aksi Asisten AI DIPANGKAS supaya teks SYS pendek (respons lebih cepat, lebih jarang gagal). Hanya perintah AI yang dibuang;
+  semua fitur tetap ada lewat tombol manual di aplikasi. Aksi AI yang TERSISA: sisa_kertas, jarak, margin, ukuran, jumlah, rapikan,
+  isi_halaman, muat_satu_halaman, bagi_kertas, hapus_bg, warna_bg, putar, hapus, teks_tambah/teks_ubah (isi, ukuran, warna, tebal), undo, cetak, export.
+- Aksi AI yang DIBUANG: zoom, tab_baru, ganti_tab, nama_tab, simpan_proyek, geser, rata, layer, balik, duplikat, bentuk, sesuaikan,
+  garis, putar_otomatis, hapus_antrean, redo, gaya teks miring/garis_bawah/font. Kalau ingin dikembalikan, ambil dari file v26.
+- Tiga tempat (SYS, clean(), desc(), run()) sudah disamakan; node --check lolos. Belum dites di browser sungguhan.
+- RENCANA berikutnya (b): stabilitas AI (matikan mode berpikir Gemini, tambah model cadangan + jeda coba ulang, tampilkan kode error 503/429, batas waktu). Lalu (c): tautan pindah pengaturan (API key + Ukuran Saya).
+
+YANG DIKERJAKAN DI v26
+- Aksi AI baru hapus_bg {t, hex?}: hapus background lewat remove.bg dari perintah AI (mis. "hapus background semua foto, latar biru").
+  Diproses SATU kali per foto di antrean (salinan ikut tersinkron), foto yang sudah transparan dilewati (hemat kuota);
+  kalau hex diisi, warna latar diterapkan juga ke foto yang sudah dihapus background-nya. Ringkasan rencana menampilkan
+  berapa foto yang akan memakai kuota. API Key remove.bg dipakai yang sudah ada (Atur API Key di editor foto); kalau kosong,
+  diminta lewat prompt. Kegagalan (kuota habis / key salah / offline) dilaporkan per langkah, hasil yang sudah jadi tetap tersimpan (bisa Undo).
+- Tombol Jalankan di panel AI kini mendukung langkah async dan menjalankan langkah berurutan (langkah sinkron lama tidak berubah).
+- Fungsi lama runRemoveBackground / resetRemoveBgOriginal TIDAK diubah; hapus_bg memakai helper yang sama
+  (compositeTransparentWithColor, syncSiblingInstances) lewat fungsi baru hapusBg() di blok script [v21].
+- Teks SYS: kalimat "Hapus background ... TIDAK didukung" diganti menjadi hanya crop/zoom manual yang tidak didukung.
+
+YANG DIKERJAKAN DI v25
+- Petunjuk mengambang "Klik 2× foto, atau tekan Edit Foto" dimatikan (saklar HINT_ENABLED=false di script [v17]).
+- BUG diperbaiki: perintah seperti "tiap foto 5x5, perbanyak sampai kertas penuh" dulu cuma menaruh foto di pojok
+  karena AI menebak jumlah. Sekarang ada aksi baru isi_halaman: ubah ukuran, hitung sendiri berapa foto muat
+  (pakai margin, jarak, putar otomatis), set jumlah, lalu Rapikan. AI dilarang menebak jumlah untuk permintaan "penuh".
+- Aksi AI baru: isi_halaman, putar_otomatis, geser, hapus_antrean, ganti_tab, nama_tab, simpan_proyek,
+  plus gaya teks miring / garis_bawah / font di teks_tambah & teks_ubah. state() kini mengirim jarak, margin,
+  putar_otomatis, tab_aktif ke AI.
+
+BELUM DIDUKUNG AI (kandidat tugas berikutnya, diskusikan dulu dengan pemilik)
+- Crop/zoom/geser isi foto manual, Ukuran Saya (simpan ukuran),
+  buka proyek .json, hapus tab, mode multi-pilih, pilih objek spesifik per salinan.
+
+UJI YANG BELUM SEMPAT DILAKUKAN
+- [v26] hapus_bg belum dites di browser dengan API Key remove.bg sungguhan. Tes: unggah 2 foto, perintah "hapus background
+  semua foto, latar biru" -> rencana menyebut 2 foto kuota; setelah Jalankan kedua foto berlatar biru; ulangi perintah yang sama
+  tanpa warna -> harus ditolak "sudah dihapus sebelumnya" tanpa memakai kuota.
+- Sintaks JS sudah dicek (node --check lolos), tapi belum dites di browser sungguhan. Tes: unggah 1 foto, perintah
+  "ukuran 5x5, perbanyak sampai satu kertas penuh" -> harus terisi grid rapi (A4, margin 5, jarak 2 => 15 foto).
+=====================================================================
+-->
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -4762,8 +4841,10 @@
   /* ===== [v17] Petunjuk "Edit Foto": muncul 4 detik saat satu foto baru dipilih ===== */
   (function() {
     var hint = document.getElementById('editHint'), lastKey = '', timer = null;
+    var HINT_ENABLED = false; /* [v25] petunjuk mengambang dimatikan karena mengganggu; ubah ke true untuk menyalakan lagi */
     function check() {
       if (!hint || typeof selectedInstanceIds === 'undefined') return;
+      if (!HINT_ENABLED) { hint.style.display = 'none'; return; }
       var key = '';
       if (selectedInstanceIds.length === 1) {
         var inst = placedInstances.find(function(i) { return i.instId === selectedInstanceIds[0]; });
@@ -5475,7 +5556,7 @@
 @media print{#aiPanel,#aiToast{display:none!important}}
 </style>
 <div id="aiPanel" class="app-chrome">
-  <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Asisten AI</b><span><a href="#" id="aiKeyLink" style="color:#9ec5fe;font-size:11px">Atur API Key</a> &nbsp;<button id="aiClose" type="button" style="background:#444;color:#fff;padding:2px 8px">✕</button></span></div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Asisten AI</b><span><a href="#" id="aiKeyLink" style="color:#9ec5fe;font-size:11px">Atur API Key</a> &nbsp;<a href="#" id="aiMoveLink" style="color:#9ec5fe;font-size:11px">Salin Tautan Pengaturan</a> &nbsp;<button id="aiClose" type="button" style="background:#444;color:#fff;padding:2px 8px">✕</button></span></div>
   <div id="aiList" style="margin-bottom:6px;font-size:12px"></div>
   <textarea id="aiCmd" placeholder="Contoh: foto 1 ukuran 3x4 sebanyak 2, foto 2 ukuran 4x6 sebanyak 3, rapikan"></textarea>
   <div style="margin-top:6px;display:flex;gap:6px"><button id="aiSend" type="button" style="background:#6d28d9;color:#fff">Kirim</button><button id="aiClear" type="button" style="background:#444;color:#fff">Hapus teks</button></div>
@@ -5484,16 +5565,16 @@
 <div id="aiToast"></div>
 <script>
 (function(){
-  var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-flash-latest','gemini-flash-lite-latest','gemini-2.5-flash'], plan=null;
-  var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Target "t": "semua" (semua foto), nomor foto (1,2,..), "teks" (semua teks), atau "objek" (foto+teks). Default t="semua". Aksi yang boleh: '+
-  '{"a":"sisa_kertas","aktif":bool,"w":cm,"h":cm} {"a":"ukuran","t":..,"w":cm,"h":cm} {"a":"jumlah","t":..,"n":1-200} {"a":"jarak","n":0-10} {"a":"margin","n":0-30} {"a":"rapikan"} {"a":"hapus","t":..} {"a":"duplikat","t":..} '+
-  '{"a":"putar","t":..,"deg":90|-90|180} {"a":"balik","t":..} {"a":"rata","t":..,"tipe":"left|right|top|bottom|centerH|centerV"} {"a":"layer","t":..,"arah":"up|down"} '+
-  '{"a":"bentuk","t":..,"mode":"oval|kotak|bulat","radius":0-100} {"a":"sesuaikan","t":..,"kunci":"temperature|tint|brightness|contrast|highlights|saturation|sharpness","n":-100..100} {"a":"garis","t":..,"aktif":bool,"tebal":0.2-3,"warna":"#hex"} {"a":"warna_bg","t":..,"hex":"#hex"} '+
-  '{"a":"teks_tambah","isi":"..","ukuran":6-200,"warna":"#hex","tebal":bool} {"a":"teks_ubah","no":nomor teks atau "semua","isi":"..","ukuran":n,"warna":"#hex","tebal":bool} '+
-  '{"a":"zoom","n":25-400} {"a":"undo"} {"a":"redo"} {"a":"tab_baru"} {"a":"cetak"} {"a":"export","fmt":"pdf|jpg|png"}. '+
-  '{"a":"muat_satu_halaman","n":jumlah foto (opsional)} = semua foto dikecilkan (jika perlu) dan ditata rapi dalam 1 halaman. {"a":"bagi_kertas","t":..,"w":cm,"h":cm,"kolom":n,"baris":n} = kertas w x h dibagi kolom x baris bagian sama besar (untuk dipotong), foto dipasang di tengah tiap bagian (A6 "dibagi dua" = kolom 1, baris 2). '+
-  'Ukuran baku: KTP/ATM/SIM=8.56x5.4, A7=7.4x10.5, A6=10.5x14.8, A5=14.8x21, A4=21x29.7, 3R=8.9x12.7, 4R=10.2x15.2. "orang/foto pertama, kedua, ketiga" = nomor 1,2,3 urut antrean; t boleh daftar [1,3]; foto dengan ukuran berbeda = langkah terpisah per nomor. Jika jumlah foto kurang dari jumlah bagian, tambah langkah jumlah. '+
-  'Urutan: sisa_kertas, ukuran, jumlah, tampilan foto (bentuk/sesuaikan/garis/warna_bg/putar/balik), teks, jarak/margin, rapikan ATAU muat_satu_halaman ATAU bagi_kertas, lalu cetak/export terakhir. Tambahkan rapikan jika pengguna minta rapi. Hapus background otomatis, crop manual, simpan proyek TIDAK didukung: jelaskan di ringkas. Jika tidak jelas, langkah=[]. Jangan mengarang aksi.';
+  var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-2.5-flash','gemini-flash-latest','gemini-2.5-flash-lite','gemini-flash-lite-latest'] /* [v28] */, plan=null;
+  /* [v27] SYS diperpendek: hanya aksi inti cetak. Aksi lain tetap bisa lewat tombol manual di aplikasi. */
+  var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Target "t": "semua" (semua foto), nomor foto (1,2,..) atau daftar [1,3], "teks" (semua teks), "objek" (foto+teks). Default t="semua". Aksi: '+
+  '{"a":"sisa_kertas","aktif":bool,"w":cm,"h":cm} {"a":"jarak","n":0-10} {"a":"margin","n":0-30} {"a":"ukuran","t":..,"w":cm,"h":cm} {"a":"jumlah","t":..,"n":1-200} {"a":"rapikan"} {"a":"hapus","t":..} {"a":"putar","t":..,"deg":90|-90|180} '+
+  '{"a":"hapus_bg","t":..,"hex":"#hex"} = hapus background via remove.bg (pakai kuota, 1x per foto, hex=warna latar pengganti opsional, default putih; JANGAN tambah warna_bg lagi kalau hex sudah diisi) {"a":"warna_bg","t":..,"hex":"#hex"} = ganti warna latar foto yang background-nya sudah dihapus '+
+  '{"a":"teks_tambah","isi":"..","ukuran":6-200,"warna":"#hex","tebal":bool} {"a":"teks_ubah","no":nomor teks atau "semua","isi":"..","ukuran":n,"warna":"#hex","tebal":bool} {"a":"undo"} {"a":"cetak"} {"a":"export","fmt":"pdf|jpg|png"} '+
+  '{"a":"muat_satu_halaman","n":jumlah foto (opsional)} = semua foto dikecilkan jika perlu dan ditata dalam 1 halaman. {"a":"bagi_kertas","t":..,"w":cm,"h":cm,"kolom":n,"baris":n} = kertas w x h dibagi kolom x baris bagian sama besar, foto di tengah tiap bagian (A6 "dibagi dua" = kolom 1, baris 2). '+
+  '{"a":"isi_halaman","t":..,"w":cm,"h":cm,"halaman":n} = ubah ukuran (w,h opsional) lalu perbanyak otomatis sampai kertas penuh; aplikasi menghitung jumlahnya, JANGAN menebak. WAJIB dipakai untuk "perbanyak/penuh/isi kertas/sebanyak muat" tanpa angka jumlah; halaman default 1. '+
+  'Ukuran baku: KTP/ATM/SIM=8.56x5.4, A7=7.4x10.5, A6=10.5x14.8, A5=14.8x21, A4=21x29.7, 3R=8.9x12.7, 4R=10.2x15.2. "foto pertama/kedua/ketiga" = nomor 1,2,3. Ukuran berbeda = langkah terpisah per nomor. '+
+  'Urutan: sisa_kertas, jarak/margin, ukuran, jumlah, hapus_bg/warna_bg/putar, teks, lalu rapikan ATAU isi_halaman ATAU muat_satu_halaman ATAU bagi_kertas, terakhir cetak/export. Tambahkan rapikan jika diminta rapi. Selain aksi di atas TIDAK didukung: jelaskan di ringkas. Jika tidak jelas, langkah=[]. Jangan mengarang aksi.';
   function $(i){return document.getElementById(i);}
   function photos(){return queueItems.filter(function(q){return q.type==='photo';});}
   function texts(){return queueItems.filter(function(q){return q.type==='text';});}
@@ -5529,24 +5610,20 @@
   function unsel(){selectedInstanceIds=[];redrawCanvas();}
   function clean(s){
     if(!s)return null;var a=s.a,o={a:a,t:s.t==null?'semua':s.t};
-    if(['rapikan','undo','redo','tab_baru','cetak'].indexOf(a)>=0)return o;
-    if(['hapus','duplikat','balik'].indexOf(a)>=0)return o;
+    if(['rapikan','undo','cetak'].indexOf(a)>=0)return o;
+    if(a==='hapus')return o;
     if(a==='sisa_kertas'){o.aktif=!!s.aktif;o.w=num(s.w,0.5,21);o.h=num(s.h,0.5,29.7);}
     else if(a==='ukuran'){o.w=num(s.w,0.5,28);o.h=num(s.h,0.5,28);if(!o.w||!o.h)return null;}
     else if(a==='jumlah'){o.n=num(s.n,1,200);if(!o.n)return null;o.n=Math.round(o.n);}
     else if(a==='jarak'){o.n=num(s.n,0,10);if(o.n===null)return null;}
     else if(a==='margin'){o.n=num(s.n,0,30);if(o.n===null)return null;}
     else if(a==='putar'){o.deg=[90,-90,180].indexOf(+s.deg)>=0?+s.deg:null;if(o.deg===null)return null;}
-    else if(a==='rata'){o.tipe=['left','right','top','bottom','centerH','centerV'].indexOf(s.tipe)>=0?s.tipe:null;if(!o.tipe)return null;}
-    else if(a==='layer'){o.arah=s.arah==='down'?'down':'up';}
-    else if(a==='bentuk'){o.mode=['oval','kotak','bulat'].indexOf(s.mode)>=0?s.mode:null;if(!o.mode)return null;o.radius=num(s.radius,0,100);if(o.radius===null)o.radius=30;}
-    else if(a==='sesuaikan'){o.kunci=ADJUST_KEYS.indexOf(s.kunci)>=0?s.kunci:null;o.n=num(s.n,-100,100);if(!o.kunci||o.n===null)return null;}
-    else if(a==='garis'){o.aktif=s.aktif!==false;o.tebal=num(s.tebal,0.2,3)||1;o.warna=hex(s.warna)||'#000000';}
     else if(a==='warna_bg'){o.hex=hex(s.hex);if(!o.hex)return null;}
     else if(a==='teks_tambah'||a==='teks_ubah'){o.isi=s.isi==null?null:String(s.isi).slice(0,200);o.ukuran=num(s.ukuran,6,200);o.warna=hex(s.warna);o.tebal=s.tebal==null?null:!!s.tebal;o.no=s.no==null?'semua':s.no;}
-    else if(a==='zoom'){o.n=num(s.n,25,400);if(!o.n)return null;}
     else if(a==='export'){o.fmt=['pdf','jpg','png'].indexOf(s.fmt)>=0?s.fmt:null;if(!o.fmt)return null;}
     else if(a==='muat_satu_halaman'){o.n=num(s.n,1,100)||0;}
+    else if(a==='isi_halaman'){o.w=num(s.w,0.5,28);o.h=num(s.h,0.5,28);if(!(o.w&&o.h)){o.w=null;o.h=null;}o.halaman=Math.round(num(s.halaman,1,20)||1);}
+    else if(a==='hapus_bg'){o.hex=hex(s.hex);}
     else if(a==='bagi_kertas'){o.w=num(s.w,0.5,21);o.h=num(s.h,0.5,29.7);o.kolom=Math.round(num(s.kolom,1,10)||1);o.baris=Math.round(num(s.baris,1,10)||1);if(!o.w||!o.h)return null;}
     else return null;
     return o;
@@ -5561,28 +5638,81 @@
       case 'margin':return 'Margin → '+s.n;
       case 'rapikan':return 'Rapikan otomatis';
       case 'hapus':return 'HAPUS '+t;
-      case 'duplikat':return 'Gandakan '+t;
       case 'putar':return 'Putar '+t+' '+s.deg+'°';
-      case 'balik':return 'Balik (mirror) '+t;
-      case 'rata':return 'Ratakan '+t+': '+s.tipe;
-      case 'layer':return 'Layer '+t+' → '+(s.arah==='up'?'naik':'turun');
-      case 'bentuk':return 'Bentuk '+t+' → '+s.mode+(s.mode==='bulat'?' ('+s.radius+'%)':'');
-      case 'sesuaikan':return 'Sesuaikan '+t+': '+s.kunci+' '+s.n;
-      case 'garis':return s.aktif?'Garis pembatas '+t+' '+s.tebal+'mm '+s.warna:'Matikan garis pembatas '+t;
       case 'warna_bg':return 'Warna background '+t+' → '+s.hex;
       case 'teks_tambah':return 'Tambah teks'+(s.isi?' "'+s.isi+'"':'');
       case 'teks_ubah':return 'Ubah teks '+(s.no==='semua'?'semua':'ke-'+s.no)+(s.isi?' → "'+s.isi+'"':'');
       case 'muat_satu_halaman':return 'Muat semua foto dalam 1 halaman'+(s.n?' ('+s.n+' foto)':'');
       case 'bagi_kertas':return 'Kertas '+s.w+' x '+s.h+' cm dibagi '+s.kolom+' x '+s.baris+' bagian, '+t+' di tengah tiap bagian';
-      case 'zoom':return 'Zoom tampilan '+s.n+'%';
-      case 'undo':return 'Undo';case 'redo':return 'Redo';
-      case 'tab_baru':return 'Buka tab kerja baru';
+      case 'isi_halaman':return 'Isi '+s.halaman+' halaman penuh: '+t+(s.w?' ukuran '+s.w+' x '+s.h+' cm':'')+' (jumlah dihitung otomatis)';
+      case 'hapus_bg':var nb=bgTodo(s.t).length;return 'Hapus background '+t+(s.hex?' → latar '+s.hex:'')+' (remove.bg online, pakai kuota: '+nb+' foto)';
+      case 'undo':return 'Undo';
       case 'cetak':return 'Cetak';
       case 'export':return 'Export '+s.fmt.toUpperCase();
     }
   }
   function setSlider(id,v){var e=$(id);e.value=v;e.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('change'));}
   function photoInsts(t){return T(t).filter(function(i){return i.type==='photo';});}
+  /* [v26] hapus_bg: hapus background lewat remove.bg, satu kali per foto di antrean (salinan ikut tersinkron). */
+  function bgFirstInst(q){return placedInstances.filter(function(i){return i.parentId===q.id&&i.type==='photo';})[0];}
+  function bgTodo(t){return Q(t).filter(function(q){var i=bgFirstInst(q);return i&&!i.bgTransparentSrc;});}
+  function bgErr(e){
+    var m=(e&&e.message)||'',l=m.toLowerCase();
+    if(m.indexOf('402')!==-1||l.indexOf('insufficient')!==-1||l.indexOf('credit')!==-1)return 'kuota remove.bg habis bulan ini';
+    if(m.indexOf('403')!==-1||l.indexOf('key')!==-1)return 'API Key remove.bg salah/tidak valid';
+    if(e&&e.name==='TypeError')return 'gagal terhubung ke remove.bg, cek internet';
+    return m||'gagal';
+  }
+  function hapusBg(s){
+    var items=Q(s.t).filter(function(q){return q.type==='photo';});
+    if(!items.length)throw new Error('foto tidak ditemukan');
+    var todo=[],done=[];
+    items.forEach(function(q){var i=bgFirstInst(q);if(!i)return;(i.bgTransparentSrc?done:todo).push(i);});
+    if(!todo.length&&!done.length)throw new Error('foto belum ada di kertas');
+    if(!todo.length&&!s.hex)throw new Error('background sudah dihapus sebelumnya (tidak memakai kuota lagi)');
+    if(todo.length&&!getRemoveBgApiKey()){promptRemoveBgApiKey();if(!getRemoveBgApiKey())throw new Error('API Key remove.bg belum diisi');}
+    var color=s.hex||lastUsedBgColor||'#FFFFFF';
+    if(s.hex)lastUsedBgColor=s.hex;
+    saveState();
+    function applyColor(inst,transparent){
+      return new Promise(function(res,rej){
+        compositeTransparentWithColor(transparent,color,function(newSrc){
+          if(!newSrc){rej(new Error('gagal menerapkan warna latar'));return;}
+          inst.src=newSrc;inst.bgColor=color;
+          syncSiblingInstances(inst,['src','bgOriginalSrc','bgTransparentSrc','bgColor']);
+          var qi=queueItems.filter(function(q){return q.id===inst.parentId;})[0];if(qi)qi.src=inst.src;
+          renderQueueTable();redrawCanvas();res();
+        });
+      });
+    }
+    function one(inst){
+      var from=inst.bgOriginalSrc||inst.src;
+      return fetch(from).then(function(r){return r.blob();}).then(function(blob){
+        var fd=new FormData();fd.append('image_file',blob,'foto.jpg');fd.append('size','auto');
+        return fetch(REMOVE_BG_API_URL,{method:'POST',headers:{'X-Api-Key':getRemoveBgApiKey()},body:fd});
+      }).then(function(res){
+        if(!res.ok)return res.json().catch(function(){return null;}).then(function(d){
+          throw new Error((d&&d.errors&&d.errors[0]&&d.errors[0].title)||('HTTP '+res.status));
+        });
+        return res.blob();
+      }).then(function(b){
+        return new Promise(function(res,rej){var rd=new FileReader();rd.onload=function(){res(rd.result);};rd.onerror=function(){rej(new Error('gagal membaca hasil'));};rd.readAsDataURL(b);});
+      }).then(function(dataUrl){
+        if(!inst.bgOriginalSrc)inst.bgOriginalSrc=inst.src;
+        inst.bgTransparentSrc=dataUrl;
+        return applyColor(inst,dataUrl);
+      });
+    }
+    var n=0,chain=Promise.resolve();
+    todo.forEach(function(inst){
+      chain=chain.then(function(){show('Menghapus background foto '+(n+1)+' dari '+todo.length+'…');return one(inst);}).then(function(){n++;});
+    });
+    if(s.hex)done.forEach(function(inst){chain=chain.then(function(){return applyColor(inst,inst.bgTransparentSrc);});});
+    return chain.then(function(){scheduleAutoSave();},function(e){
+      scheduleAutoSave();
+      throw new Error(bgErr(e)+(todo.length?' ('+n+' dari '+todo.length+' foto berhasil)':''));
+    });
+  }
   function run(s){
     var a=s.a,L;
     if(a==='sisa_kertas'){
@@ -5596,23 +5726,7 @@
     else if(a==='margin'){setSlider('marginSlider',s.n);}
     else if(a==='rapikan'){autoArrangeAllWithHistory();}
     else if(a==='hapus'){sel(s.t);if(selectedInstanceIds.length)deleteSelectedInstances();}
-    else if(a==='duplikat'){sel(s.t);if(selectedInstanceIds.length)duplicateSelectedInstances();unsel();}
     else if(a==='putar'){sel(s.t);if(selectedInstanceIds.length)rotateSelected(s.deg);unsel();}
-    else if(a==='balik'){sel(s.t);flipSelected();unsel();}
-    else if(a==='rata'){sel(s.t);alignSelected(s.tipe);unsel();}
-    else if(a==='layer'){sel(s.t);if(selectedInstanceIds.length)moveLayerSelected(s.arah);unsel();}
-    else if(a==='bentuk'){
-      L=photoInsts(s.t);if(!L.length)return;saveState();
-      L.forEach(function(i){i.oval=s.mode==='oval';i.cornerRadius=s.mode==='bulat'?s.radius:0;syncSiblingInstances(i,['cornerRadius','oval']);});redrawCanvas();
-    }
-    else if(a==='sesuaikan'){
-      L=photoInsts(s.t);if(!L.length)return;saveState();
-      L.forEach(function(i){var b={};ADJUST_KEYS.forEach(function(k){b[k]=(i.adjust&&i.adjust[k])||0;});b[s.kunci]=s.n;i.adjust=b;syncSiblingInstances(i,['adjust']);});redrawCanvas();
-    }
-    else if(a==='garis'){
-      L=photoInsts(s.t);if(!L.length)return;saveState();
-      L.forEach(function(i){i.border={enabled:s.aktif,thickness:s.tebal,color:s.warna};syncSiblingInstances(i,['border']);});redrawCanvas();
-    }
     else if(a==='warna_bg'){
       L=photoInsts(s.t).filter(function(i){return i.bgTransparentSrc;});
       if(!L.length)throw new Error('background foto belum dihapus (hapus dulu lewat editor foto)');
@@ -5622,6 +5736,7 @@
       processTextAdd();var q=queueItems[queueItems.length-1];
       if(s.isi)updateTextProperty(q.id,'text',s.isi);if(s.ukuran)updateTextProperty(q.id,'fontSize',s.ukuran);
       if(s.warna)updateTextProperty(q.id,'color',s.warna);if(s.tebal)updateTextProperty(q.id,'isBold',true);
+      
     }
     else if(a==='teks_ubah'){
       L=texts();if(s.no!=='semua')L=L.slice(parseInt(s.no,10)-1,parseInt(s.no,10));
@@ -5664,38 +5779,69 @@
       L.forEach(function(i,n){var col=n%s.kolom,row=Math.floor(n/s.kolom);i.pageIndex=0;i.leftMm=x0+col*cw2+(cw2-i.w)/2;i.topMm=row*ch2+(ch2-i.h)/2;});
       renderQueueTable();redrawCanvas();scheduleAutoSave();
     }
-    else if(a==='zoom'){setViewZoom(s.n);}
-    else if(a==='undo'){undo();}else if(a==='redo'){redo();}
-    else if(a==='tab_baru'){addNewTab();}
+    else if(a==='isi_halaman'){
+      var TP=Q(s.t).filter(function(q){return q.type==='photo';});
+      if(!TP.length)throw new Error('belum ada foto');
+      if(s.w&&s.h)TP.forEach(function(q){changeQueueItemSize(q.id,s.w,s.h,s.w+'x'+s.h+' cm');});
+      var mg=parseFloat($('marginSlider').value),sp2=parseFloat($('spacingSlider').value);
+      if(isNaN(mg))mg=5;if(isNaN(sp2))sp2=2;
+      var bb=getArrangeBounds(),aw=bb.right-bb.left-2*mg,ah=bb.bottom-bb.top-2*mg;
+      function grid(w,h){if(w<=0||h<=0||w>aw+0.001||h>ah+0.001)return 0;return (Math.floor((aw+sp2)/(w+sp2)+1e-6))*(Math.floor((ah+sp2)/(h+sp2)+1e-6));}
+      var q0=TP[0],fw=q0.wCm*10,fh=q0.hCm*10,rotOk=!$('chkAutoRotate')||$('chkAutoRotate').checked;
+      var perPage=Math.max(grid(fw,fh),rotOk?grid(fh,fw):0);
+      if(!perPage)throw new Error('ukuran foto '+q0.wCm+'x'+q0.hCm+' cm tidak muat di area kertas');
+      var total=Math.min(perPage*s.halaman,200*TP.length),each=Math.floor(total/TP.length),extra=total-each*TP.length;
+      saveState();
+      TP.forEach(function(q,ix){updateQueueQty(q.id,Math.min(200,Math.max(1,each+(ix<extra?1:0))));});
+      autoArrangeAll();renderQueueTable();redrawCanvas();scheduleAutoSave();
+    }
+    else if(a==='hapus_bg'){return hapusBg(s);}
+    else if(a==='undo'){undo();}
     else if(a==='cetak'){$('btnPrint').click();}
     else if(a==='export'){runExport(s.fmt);}
   }
-  function gcall(body,i,n){
+  /* [v28] gcall diperkuat: mode berpikir dimatikan, model cadangan lebih banyak, coba ulang berjeda, batas waktu 20 dtk, kode error tampil. */
+  function gcall(obj,i,n,noThink,last){
     i=i||0;n=n||0;
-    return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS[i]+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':getKey()},body:body})
-    .then(function(r){return r.json().then(function(d){return {st:r.status,d:d};});})
+    var ctl=(typeof AbortController!=='undefined')?new AbortController():null,tm=null,timedOut=false;
+    var o=JSON.parse(JSON.stringify(obj));
+    if(!noThink)o.generationConfig.thinkingConfig={thinkingBudget:0};
+    if(ctl)tm=setTimeout(function(){timedOut=true;ctl.abort();},20000);
+    function next(st,why){
+      var rec=(st===503||st===500||st===0);
+      if(rec&&n<2){show('Server AI sibuk ('+(st||'timeout')+'), coba lagi '+(n+1)+'/2…');return new Promise(function(r){setTimeout(r,2000*(n+1));}).then(function(){return gcall(obj,i,n+1,noThink,st);});}
+      if(i<MODELS.length-1){show('Ganti ke model cadangan ('+(st||'timeout')+')…');return gcall(obj,i+1,0,false,st);}
+      var e;
+      if(st===429)e=new Error('Kuota API key Gemini habis (kode 429). Tunggu beberapa menit atau pakai key baru.');
+      else if(st===0)e=new Error('Server Gemini tidak merespons (timeout). Cek internet lalu coba lagi.');
+      else e=new Error('Server Gemini sedang penuh (kode '+st+'). Coba lagi 1-2 menit lagi.');
+      e.busy=true;throw e;
+    }
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS[i]+':generateContent',{method:'POST',signal:ctl?ctl.signal:undefined,headers:{'Content-Type':'application/json','x-goog-api-key':getKey()},body:JSON.stringify(o)})
+    .then(function(r){clearTimeout(tm);return r.json().catch(function(){return {error:{message:'respons tidak terbaca'}};}).then(function(d){return {st:r.status,d:d};});},
+      function(err){clearTimeout(tm);if(timedOut||(err&&err.name==='AbortError'))return {st:0,d:{error:{message:'timeout'}}};throw err;})
     .then(function(x){
       if(!x.d.error)return x.d;
-      var st=x.st;
-      if(st!==503&&st!==429&&st!==500&&st!==404)throw new Error(x.d.error.message||'Gagal');
-      if(n<2&&st!==404){show('Server AI lagi sibuk, mencoba lagi…');return new Promise(function(r){setTimeout(r,1500*(n+1));}).then(function(){return gcall(body,i,n+1);});}
-      if(i<MODELS.length-1){show('Ganti ke model cadangan…');return gcall(body,i+1,0);}
-      var e=new Error('Server Gemini sedang penuh. Coba lagi 1-2 menit lagi.');e.busy=true;throw e;
+      var st=x.st,msg=x.d.error.message||'Gagal';
+      if(st===400&&!noThink&&/think/i.test(msg))return gcall(obj,i,n,true,last);
+      if(st===0||st===503||st===429||st===500||st===404)return next(st);
+      if(st===401||st===403||/api key/i.test(msg))throw new Error('API Key Gemini salah/tidak valid (kode '+st+')');
+      throw new Error(msg+' (kode '+st+')');
     });
   }
   function show(html){$('aiPlan').innerHTML=html;}
   function esc(t){return String(t).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
   function state(){
     return JSON.stringify({foto:photos().map(function(q,i){var ins=placedInstances.filter(function(x){return x.parentId===q.id;})[0]||{};return {no:i+1,ukuran:q.wCm+'x'+q.hCm,jumlah:q.qty,bg_sudah_dihapus:!!ins.bgTransparentSrc};}),
-      teks:texts().map(function(q,i){return {no:i+1,isi:q.text};}),sisa_kertas:scrapGuide});
+      teks:texts().map(function(q,i){return {no:i+1,isi:q.text};}),sisa_kertas:scrapGuide,jarak:$('spacingSlider').value,margin:$('marginSlider').value,putar_otomatis:!!($('chkAutoRotate')&&$('chkAutoRotate').checked)});
   }
   function send(){
     var cmd=$('aiCmd').value.trim();if(!cmd)return;
     if(!getKey()){askKey();if(!getKey())return;}
     show('Memproses…');plan=null;
-    gcall(JSON.stringify({systemInstruction:{parts:[{text:SYS}]},
+    gcall({systemInstruction:{parts:[{text:SYS}]},
       contents:[{role:'user',parts:[{text:'Keadaan: '+state()+'\nPerintah: '+cmd}]}],
-      generationConfig:{responseMimeType:'application/json',temperature:0}}))
+      generationConfig:{responseMimeType:'application/json',temperature:0}})
     .then(function(d){
       var j=JSON.parse(d.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
       var steps=(j.langkah||[]).map(clean).filter(Boolean);
@@ -5705,10 +5851,24 @@
         '<button id="aiGo" type="button" style="background:#16a34a;color:#fff">Jalankan</button> <button id="aiNo" type="button" style="background:#444;color:#fff">Batal</button>');
       $('aiGo').onclick=function(){
         var p=plan;plan=null;var err=[];
-        p.forEach(function(s){try{run(s);}catch(e){err.push(desc(s)+' ('+e.message+')');}});
-        renderList();$('aiCmd').value='';
-        if(err.length){show('Selesai, tapi gagal: '+esc(err.join('; ')));}
-        else{show('');closePanel();toast('Selesai ✔ (bisa di-Undo)');}
+        show('Menjalankan…');
+        function fin(){
+          renderList();$('aiCmd').value='';
+          if(err.length){show('Selesai, tapi gagal: '+esc(err.join('; ')));}
+          else{show('');closePanel();toast('Selesai ✔ (bisa di-Undo)');}
+        }
+        var k=0;
+        (function next(){ /* [v26] langkah boleh async (hapus_bg); dijalankan berurutan */
+          while(k<p.length){
+            var s=p[k++],r;
+            try{r=run(s);}catch(e){err.push(desc(s)+' ('+e.message+')');continue;}
+            if(r&&typeof r.then==='function'){
+              r.then(next,function(e){err.push(desc(s)+' ('+e.message+')');next();});
+              return;
+            }
+          }
+          fin();
+        })();
       };
       $('aiNo').onclick=function(){plan=null;show('');};
     }).catch(function(e){show(e.busy?esc(e.message):'Gagal: '+esc(e.message));});
@@ -5728,6 +5888,45 @@
   $('btnAiDock').onclick=function(){if($('aiPanel').classList.contains('show'))closePanel();else openPanel();};
   $('aiClose').onclick=closePanel;
   $('aiKeyLink').onclick=function(e){e.preventDefault();askKey();};
+
+  /* [v29] Tautan pindah pengaturan: API key Gemini + remove.bg + Ukuran Saya ikut ke perangkat lain.
+     Data ditaruh di bagian #pindah=... pada alamat (bagian # tidak dikirim ke server). Dibuka di perangkat tujuan -> konfirmasi -> masuk. */
+  function b64e(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+  function b64d(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';return JSON.parse(decodeURIComponent(escape(atob(t))));}
+  function buildMoveLink(){
+    var d={v:1,g:getKey(),r:getRemoveBgApiKey(),u:customSizes.map(function(s){return [s.name||'',s.w,s.h];})};
+    return location.href.split('#')[0]+'#pindah='+b64e(d);
+  }
+  $('aiMoveLink').onclick=function(e){
+    e.preventDefault();
+    if(!getKey()&&!getRemoveBgApiKey()&&!customSizes.length){toast('Belum ada pengaturan untuk disalin');return;}
+    var link=buildMoveLink();
+    function ok(){toast('Tautan disalin. Kirim ke diri sendiri saja (berisi API key)');}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(ok,function(){prompt('Salin tautan ini (berisi API key, jangan dibagikan):',link);});}
+    else prompt('Salin tautan ini (berisi API key, jangan dibagikan):',link);
+  };
+  function importMove(){
+    var m=(location.hash||'').match(/^#pindah=([A-Za-z0-9_\-]+)$/);if(!m)return;
+    var d=null;try{d=b64d(m[1]);}catch(e){}
+    try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+    if(!d||d.v!==1){alert('Tautan pengaturan rusak atau tidak lengkap.');return;}
+    var jml=Array.isArray(d.u)?d.u.length:0;
+    if(!confirm('Tautan pengaturan terdeteksi.\n\nMasukkan ke perangkat ini?\n'+(d.g?'• API Key Gemini\n':'')+(d.r?'• API Key remove.bg\n':'')+(jml?'• '+jml+' Ukuran Saya (ukuran yang sudah ada tidak diganda)\n':'')))return;
+    if(d.g&&typeof d.g==='string'){try{localStorage.setItem(KEY,d.g.trim());}catch(e){}}
+    if(d.r&&typeof d.r==='string')saveRemoveBgApiKey(d.r.trim());
+    var add=0;
+    if(jml){
+      d.u.forEach(function(r){
+        var s={name:String(r&&r[0]||'').trim().substr(0,24),w:Math.round(Number(r&&r[1])*100)/100,h:Math.round(Number(r&&r[2])*100)/100};
+        if(!isValidCustomSize(s)||findCustomSizeByDims(s.w,s.h)||customSizes.length>=MAX_CUSTOM_SIZES)return;
+        s.id='cs_'+Date.now()+'_'+Math.random().toString(36).substr(2,4);customSizes.push(s);add++;
+      });
+      persistCustomSizes();renderCustomSizes();
+    }
+    toast('Pengaturan masuk ✔'+(jml?' ('+add+' ukuran baru)':''));
+  }
+  /* jalan setelah loadCustomSizes() (listener DOMContentLoaded milik STEP6 terdaftar lebih dulu) */
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',importMove);else importMove();
   $('aiSend').onclick=send;
   $('aiClear').onclick=function(){$('aiCmd').value='';show('');$('aiCmd').focus();};
   $('aiCmd').addEventListener('focus',function(){this.select();});
