@@ -1,110 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-<!--
-=====================================================================
-CATATAN SERAH-TERIMA UNTUK AI BERIKUTNYA  (baca ini dulu sebelum mengubah apa pun)
-Proyek : "Layout Cetak Foto & Teks" — aplikasi HTML 1 file (index.html), jalan di browser HP/laptop.
-Pemilik: Aula (bahasa Indonesia, jawab dan beri label UI dalam bahasa Indonesia).
-
-ATURAN KERJA DARI PEMILIK
-1. Fitur yang SUDAH ADA tidak boleh diubah perilakunya. Hanya mengganti/menambah fitur yang disepakati bersama.
-2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v31]. Versi terakhir: v32.
-3. Pemilik sering memberi perintah lewat suara/ketikan yang berantakan; tafsirkan maksudnya, tanyakan hanya jika benar-benar ambigu.
-4. Selalu serahkan file index.html utuh di akhir, dan perbarui catatan ini.
-
-PETA FITUR (semua di 1 file)
-- Antrean foto/teks: queueItems (foto & teks) -> placedInstances (salinan yang tampak di kertas, ukuran mm, kertas A4 210x297).
-- Rapikan: autoArrangeAll / autoArrangeSpecific / placeInstSmart; area dari getArrangeBounds() (ikut Sisa Kertas bila aktif).
-- Tab kerja (maks 5, tersimpan otomatis), Simpan/Buka Proyek .json, Ukuran Saya (localStorage), Export PDF/JPG/PNG, Cetak.
-- Editor foto (crop/zoom/putar), Sesuaikan, Garis pembatas, Bentuk (oval/sudut bulat), Hapus background (remove.bg, butuh API key).
-- Lisensi/trial dicek ke server Google Apps Script.
-- Asisten AI Perintah ([v21], tombol ✨ AI, blok script paling bawah): Gemini menerjemahkan perintah jadi JSON langkah,
-  lalu run(s) menjalankannya. Daftar aksi ada di konstanta SYS + fungsi clean() + desc() + run(). Tiga tempat ini
-  HARUS selalu diubah bersamaan kalau menambah aksi baru.
-
-YANG DIKERJAKAN DI v32 (Preset Susunan, tahap 1: foto saja)
-- Tombol baru "Preset" (📐) di bar bawah, setelah "Tata Letak"; lembar #sheetPreset didaftarkan di objek SHEETS. Kode ada di blok script tepat sebelum blok AI paling bawah (window.PresetUI, window.PresetAPI).
-- Simpan susunan sekarang: memotret semua foto di halaman 1 menjadi slot (x, y, w, h, putaran dalam mm) + margin, jarak, Sisa Kertas. Fotonya dan hasil edit TIDAK ikut. Nama wajib. Disimpan di localStorage kunci layoutFotoPresetV1 (maks 20).
-- Pasang preset: saveState() dulu (bisa Undo), lalu foto antrean dipindah ke slot; edit foto (zoom, bentuk, filter, garis) tidak disentuh, pan di-reset hanya bila putaran berubah. Teks tidak disentuh.
-- Cara mengisi: "Ulangi foto sampai penuh" (instance digandakan, qty antrean ikut dihitung ulang) atau "Satu foto, satu slot" (sisa slot kosong). Foto lebih banyak dari slot membuat halaman baru dengan pola sama.
-- Foto landscape di slot potret (atau sebaliknya) diputar 90 derajat bila kotak "Putar otomatis" di Tata Letak aktif; kalau nonaktif, pakai putaran slot yang tersimpan.
-- Pindah Pengaturan membawa daftar preset (kolom pr); di tujuan ditambahkan, nama atau susunan yang sama dilewati.
-- Aksi AI (SYS/clean/desc/run) tidak diubah. Belum ada perintah AI untuk preset. Tahap 2 yang direncanakan: teks, bentuk, garis ikut preset.
-- Belum dites di browser sungguhan oleh pemilik; hanya cek sintaks dan uji simulasi.
-
-YANG DIKERJAKAN DI v31 (bersih-bersih, tanpa mengubah perilaku)
-- Dibuang: semua komentar di dalam kode (JS 146, CSS 30, HTML 6), fungsi askKey (tak terpakai), satu variabel sisa, dan 15 aturan CSS yatim (header-bar, controls, floating-drag-handle, dll).
-- Komentar kode SENGAJA dihapus atas permintaan pemilik. Catatan serah-terima ini satu-satunya dokumentasi: peta fitur di atas tetap berlaku.
-- Pemeriksaan: struktur kode (AST) sebelum/sesudah hapus komentar identik; semua blok script lolos node --check; uji browser headless: tambah foto + teks hasilnya sama dengan v30 (antrean 2, di kertas 5), tanpa galat.
-- Jangan menambah catatan panjang lagi ke dalam kode; taruh di file catatan ini.
-
-YANG DIKERJAKAN DI v30 (AI bisa diganti / banyak penyedia + cadangan otomatis)
-- Tautan "Atur API Key" di panel AI diganti "Atur AI": layar daftar penyedia AI (maks 8). Tiap penyedia: nama, jenis, API key, model, URL, aktif/nonaktif, urutan (▲▼), hapus.
-- Jenis: "Google Gemini" (cara lama, model otomatis kalau dikosongkan) atau "OpenAI-compatible" (Groq, OpenRouter, Mistral, dst: isi URL dasar + nama model; dipanggil ke {URL}/chat/completions).
-  Preset cepat: Gemini, Groq, OpenRouter, Mistral, Lainnya. Nama model preset bisa usang -> ubah sesuai dashboard penyedia.
-- askAI() mencoba penyedia aktif BERURUTAN; kalau satu gagal (sibuk/kuota/key salah/timeout) langsung pindah ke berikutnya; kalau semua gagal, tampil daftar sebab per penyedia.
-  Kalau masih ada cadangan, penyedia dicoba cepat (tanpa coba ulang panjang); penyedia terakhir tetap pakai coba ulang 2x.
-- Migrasi: key Gemini lama otomatis jadi penyedia no.1. KEY lama tetap disinkronkan dari penyedia Gemini pertama.
-- Tautan Pindah Pengaturan kini membawa seluruh daftar penyedia; di tujuan, penyedia DITAMBAHKAN (tidak menimpa, duplikat dilewati).
-- SYS/clean/desc/run tidak berubah. Belum dites di browser sungguhan. Catatan: sebagian penyedia mungkin menolak panggilan langsung dari browser (CORS) -> pesan error menjelaskan.
-
-YANG DIKERJAKAN DI v29 (langkah c: tautan pindah pengaturan)
-- Panel ✨ AI kini punya tautan "Salin Tautan Pengaturan" (di sebelah "Atur API Key"). Isinya API key Gemini, API key remove.bg, dan daftar Ukuran Saya,
-  dikodekan base64 di bagian #pindah=... pada alamat aplikasi (bagian # tidak dikirim ke server).
-- Dibuka di perangkat lain: muncul konfirmasi, lalu key dimasukkan (menimpa key lama di perangkat itu) dan Ukuran Saya digabung tanpa duplikat (maks 30). Alamat dibersihkan setelahnya.
-- Penting: tautan berisi API key (bukan enkripsi) -> kirim ke diri sendiri saja. Kalau app dibuka dari file lokal, tautan tidak bisa dipakai di perangkat lain (butuh alamat web, mis. Netlify).
-- Belum dites di browser sungguhan. Tes: HP salin tautan -> kirim ke WA sendiri -> buka di PC -> Ok -> cek Atur API Key & Ukuran Saya.
-- Kandidat berikutnya: cadangan di cloud (Firebase) bila ingin sinkron otomatis.
-
-YANG DIKERJAKAN DI v28 (langkah b: stabilitas AI, hanya fungsi gcall + daftar MODELS)
-- Mode berpikir Gemini dimatikan (thinkingBudget 0); kalau model menolak field itu (HTTP 400), otomatis diulang tanpa field tsb.
-- Urutan model: gemini-2.5-flash, gemini-flash-latest, gemini-2.5-flash-lite, gemini-flash-lite-latest. 404 (model hilang) langsung lompat ke berikutnya.
-- 503/500/timeout: coba ulang 2x per model dengan jeda 2 dtk lalu 4 dtk, baru ganti model. 429 (kuota): langsung ganti model, tanpa coba ulang.
-- Batas waktu 20 detik per permintaan. Kode error asli tampil di pesan (503 = server penuh, 429 = kuota key habis, 401/403 = key salah).
-- Belum dites di browser sungguhan. RENCANA berikutnya: (c) tautan pindah pengaturan (API key + Ukuran Saya).
-
-YANG DIKERJAKAN DI v27 (langkah a: ringkas perintah AI)
-- Daftar aksi Asisten AI DIPANGKAS supaya teks SYS pendek (respons lebih cepat, lebih jarang gagal). Hanya perintah AI yang dibuang;
-  semua fitur tetap ada lewat tombol manual di aplikasi. Aksi AI yang TERSISA: sisa_kertas, jarak, margin, ukuran, jumlah, rapikan,
-  isi_halaman, muat_satu_halaman, bagi_kertas, hapus_bg, warna_bg, putar, hapus, teks_tambah/teks_ubah (isi, ukuran, warna, tebal), undo, cetak, export.
-- Aksi AI yang DIBUANG: zoom, tab_baru, ganti_tab, nama_tab, simpan_proyek, geser, rata, layer, balik, duplikat, bentuk, sesuaikan,
-  garis, putar_otomatis, hapus_antrean, redo, gaya teks miring/garis_bawah/font. Kalau ingin dikembalikan, ambil dari file v26.
-- Tiga tempat (SYS, clean(), desc(), run()) sudah disamakan; node --check lolos. Belum dites di browser sungguhan.
-- RENCANA berikutnya (b): stabilitas AI (matikan mode berpikir Gemini, tambah model cadangan + jeda coba ulang, tampilkan kode error 503/429, batas waktu). Lalu (c): tautan pindah pengaturan (API key + Ukuran Saya).
-
-YANG DIKERJAKAN DI v26
-- Aksi AI baru hapus_bg {t, hex?}: hapus background lewat remove.bg dari perintah AI (mis. "hapus background semua foto, latar biru").
-  Diproses SATU kali per foto di antrean (salinan ikut tersinkron), foto yang sudah transparan dilewati (hemat kuota);
-  kalau hex diisi, warna latar diterapkan juga ke foto yang sudah dihapus background-nya. Ringkasan rencana menampilkan
-  berapa foto yang akan memakai kuota. API Key remove.bg dipakai yang sudah ada (Atur API Key di editor foto); kalau kosong,
-  diminta lewat prompt. Kegagalan (kuota habis / key salah / offline) dilaporkan per langkah, hasil yang sudah jadi tetap tersimpan (bisa Undo).
-- Tombol Jalankan di panel AI kini mendukung langkah async dan menjalankan langkah berurutan (langkah sinkron lama tidak berubah).
-- Fungsi lama runRemoveBackground / resetRemoveBgOriginal TIDAK diubah; hapus_bg memakai helper yang sama
-  (compositeTransparentWithColor, syncSiblingInstances) lewat fungsi baru hapusBg() di blok script [v21].
-- Teks SYS: kalimat "Hapus background ... TIDAK didukung" diganti menjadi hanya crop/zoom manual yang tidak didukung.
-
-YANG DIKERJAKAN DI v25
-- Petunjuk mengambang "Klik 2× foto, atau tekan Edit Foto" dimatikan (saklar HINT_ENABLED=false di script [v17]).
-- BUG diperbaiki: perintah seperti "tiap foto 5x5, perbanyak sampai kertas penuh" dulu cuma menaruh foto di pojok
-  karena AI menebak jumlah. Sekarang ada aksi baru isi_halaman: ubah ukuran, hitung sendiri berapa foto muat
-  (pakai margin, jarak, putar otomatis), set jumlah, lalu Rapikan. AI dilarang menebak jumlah untuk permintaan "penuh".
-- Aksi AI baru: isi_halaman, putar_otomatis, geser, hapus_antrean, ganti_tab, nama_tab, simpan_proyek,
-  plus gaya teks miring / garis_bawah / font di teks_tambah & teks_ubah. state() kini mengirim jarak, margin,
-  putar_otomatis, tab_aktif ke AI.
-
-BELUM DIDUKUNG AI (kandidat tugas berikutnya, diskusikan dulu dengan pemilik)
-- Crop/zoom/geser isi foto manual, Ukuran Saya (simpan ukuran),
-  buka proyek .json, hapus tab, mode multi-pilih, pilih objek spesifik per salinan.
-
-UJI YANG BELUM SEMPAT DILAKUKAN
-- [v26] hapus_bg belum dites di browser dengan API Key remove.bg sungguhan. Tes: unggah 2 foto, perintah "hapus background
-  semua foto, latar biru" -> rencana menyebut 2 foto kuota; setelah Jalankan kedua foto berlatar biru; ulangi perintah yang sama
-  tanpa warna -> harus ditolak "sudah dihapus sebelumnya" tanpa memakai kuota.
-- Sintaks JS sudah dicek (node --check lolos), tapi belum dites di browser sungguhan. Tes: unggah 1 foto, perintah
-  "ukuran 5x5, perbanyak sampai satu kertas penuh" -> harus terisi grid rapi (A4, margin 5, jarak 2 => 15 foto).
-=====================================================================
--->
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -946,6 +841,16 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         <div id="presetList" class="pr-list"></div>
         <div id="presetDetail"></div>
       </section>
+      <section class="sheet" id="sheetSync">
+        <div class="sheet-head"><b>☁️ Sinkron Antar Perangkat</b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
+        <div id="syncStatus" class="sy-status"></div>
+        <div id="syncUrlRow"><label>Alamat server (Web App Apps Script)</label><input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+        <label>Kode Sinkron (sama di semua perangkat)</label>
+        <input type="text" id="syncCode" placeholder="Tempel kode, atau buat baru" autocomplete="off">
+        <div class="sy-row"><button type="button" class="btn btn-reset" id="syncGen">🎲 Buat kode baru</button><button type="button" class="btn btn-save" id="syncConnect">Simpan &amp; hubungkan</button></div>
+        <div class="sy-row"><button type="button" class="btn btn-reset" id="syncNowBtn">🔄 Sinkron sekarang</button><button type="button" class="btn btn-reset" id="syncLinkBtn">🔗 Salin tautan sinkron</button><button type="button" class="btn btn-reset" id="syncOff">Putuskan</button></div>
+        <p class="sy-note">Yang disinkronkan: Preset Susunan, Ukuran Saya, API key AI dan remove.bg. Foto dan proyek tidak ikut. Rahasiakan kode dan tautan, karena berisi akses ke API key.</p>
+      </section>
   <div id="adjustModal" class="floating-modal">
     <div id="adjustModalHeader" class="floating-modal-header">
       <h3>🎚️ Sesuaikan Foto</h3>
@@ -1119,6 +1024,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       <button type="button" class="tool-btn" id="tool_queue" onclick="openToolSheet('queue')"><span class="ti">📋</span><span class="tl">Antrean</span></button>
       <button type="button" class="tool-btn" id="tool_layout" onclick="openToolSheet('layout')"><span class="ti">🧩</span><span class="tl">Tata Letak</span></button>
       <button type="button" class="tool-btn" id="tool_preset" title="Preset Susunan" onclick="openToolSheet('preset')"><span class="ti">📐</span><span class="tl">Preset</span></button>
+      <button type="button" class="tool-btn" id="tool_sync" title="Sinkron Antar Perangkat" onclick="openToolSheet('sync')"><span class="ti">☁️</span><span class="tl">Sinkron</span></button>
       <button type="button" class="tool-btn needs-text" id="tool_text" title="Pengaturan Teks" onclick="openToolSheet('text')"><span class="ti">🔤</span><span class="tl">Teks</span></button>
       <button type="button" class="tool-btn needs-sel" id="tool_editphoto" title="Edit Foto (sama dengan klik 2×): crop, zoom, geser, putar gambar, hapus background" onclick="editSelectedPhoto()"><span class="ti">✏️</span><span class="tl">Edit Foto</span></button>
       <button type="button" class="tool-btn needs-sel" id="tool_adjust" title="Sesuaikan Foto" onclick="openToolSheet('adjust')"><span class="ti">🎚️</span><span class="tl">Sesuaikan</span></button>
@@ -4518,6 +4424,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       queue:  { el: 'sheetQueue',      btn: 'tool_queue' },
       layout: { el: 'sheetLayout',     btn: 'tool_layout' },
       preset: { el: 'sheetPreset',     btn: 'tool_preset',    open: function() { window.PresetUI.open(); } },
+      sync:   { el: 'sheetSync',       btn: 'tool_sync',      open: function() { window.SyncUI.open(); } },
       text:   { el: 'sheetText',       btn: 'tool_text' },
       adjust: { el: 'adjustModal',     btn: 'tool_adjust',    open: function() { openAdjustModal(); },     close: function() { closeAdjustModal(); } },
       border: { el: 'borderModal',     btn: 'tool_border',    open: function() { openBorderModal(); },     close: function() { closeBorderModal(); } },
@@ -5546,8 +5453,205 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
-    window.PresetUI = { open: function() { render(); $('sheetPreset').classList.add('show'); } };
+    window.PresetUI = { open: function() { render(); $('sheetPreset').classList.add('show'); }, refresh: function() { if ($('sheetPreset') && $('sheetPreset').classList.contains('show')) render(); } };
     window.PresetAPI = { load: load, merge: merge };
+  })();
+  </script>
+
+    <style>
+    #sheetSync .sy-status { font-size: 12px; padding: 8px 10px; border-radius: 8px; background: #f1f3f5; margin-bottom: 8px; }
+    #sheetSync .sy-status.ok { background: #e6f7ec; color: #176b3a; }
+    #sheetSync .sy-status.err { background: #fdeaea; color: #b02a2a; }
+    #sheetSync .sy-status.busy { background: #fff6e0; color: #8a5a00; }
+    #sheetSync label { display: block; font-size: 11.5px; color: #495057; margin: 8px 0 3px 0; }
+    #sheetSync input[type=text] { width: 100%; box-sizing: border-box; padding: 8px 9px; border: 1.5px solid #ced4da; border-radius: 8px; font-size: 13px; }
+    #sheetSync .sy-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    #sheetSync .sy-row .btn { flex: 1 1 120px; padding: 9px 8px; }
+    #sheetSync .sy-note { font-size: 10.5px; color: #6c757d; margin: 8px 0 0 0; }
+  </style>
+  <script>
+  (function() {
+    var SYNC_API_URL = 'GANTI_DENGAN_URL_WEB_APP_SINKRON';
+    var SK_URL = 'layoutFotoSyncUrlV1', SK_CODE = 'layoutFotoSyncCodeV1', SK_LAST = 'layoutFotoSyncLastV1';
+    var K = { sizes: 'layoutFotoCustomSizesV1', rbg: 'layoutFotoRemoveBgApiKey', prov: 'layoutFotoAiProvidersV1', gem: 'layoutFotoGeminiApiKey', pre: 'layoutFotoPresetV1' };
+    var busy = false, dirtyTimer = null, st = 'off', stMsg = '', lastOk = 0, tHandle = null;
+    function $(id) { return document.getElementById(id); }
+    function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+    function pj(k) { try { return JSON.parse(lsGet(k)); } catch (e) { return null; } }
+    function say(t) {
+      var e = $('presetToast');
+      if (!e) { e = document.createElement('div'); e.id = 'presetToast'; document.body.appendChild(e); }
+      e.textContent = t; e.style.display = 'block';
+      clearTimeout(tHandle); tHandle = setTimeout(function() { e.style.display = 'none'; }, 3500);
+    }
+    function srvUrl() { return (SYNC_API_URL && SYNC_API_URL.indexOf('GANTI_DENGAN') === -1) ? SYNC_API_URL : (lsGet(SK_URL) || ''); }
+    function code() { return lsGet(SK_CODE) || ''; }
+    function ready() { return !!srvUrl() && code().length >= 10; }
+    function snap() {
+      var p = pj(K.pre), s = pj(K.sizes), a = pj(K.prov);
+      return { p: Array.isArray(p) ? p : [], s: Array.isArray(s) ? s : [], a: Array.isArray(a) ? a : null, g: lsGet(K.gem) || '', r: lsGet(K.rbg) || '' };
+    }
+    function hsh(o) { var s = JSON.stringify(o), h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return h + ':' + s.length; }
+    function isEmpty(L) { return !L.p.length && !L.s.length && !(L.a && L.a.length) && !L.g && !L.r; }
+    function uniq(list, keyf, max) {
+      var seen = {}, out = [];
+      list.forEach(function(x) {
+        if (!x || out.length >= max) return;
+        var k = keyf(x);
+        if (seen[k]) return;
+        seen[k] = 1; out.push(x);
+      });
+      return out;
+    }
+    function merge(L, S) {
+      S = S || {};
+      return {
+        p: uniq((L.p || []).concat(S.p || []), function(x) { return String(x.nama || '').toLowerCase(); }, 20),
+        s: uniq((L.s || []).concat(S.s || []), function(x) { return Math.round(x.w * 100) + 'x' + Math.round(x.h * 100); }, 30),
+        a: (L.a || S.a) ? uniq((L.a || []).concat(S.a || []), function(x) { return x.tipe + '|' + x.key; }, 8) : null,
+        g: L.g || S.g || '', r: L.r || S.r || ''
+      };
+    }
+    function apply(d) {
+      lsSet(K.pre, JSON.stringify(d.p || []));
+      lsSet(K.sizes, JSON.stringify(d.s || []));
+      if (Array.isArray(d.a)) {
+        lsSet(K.prov, JSON.stringify(d.a));
+        var g = d.a.filter(function(p) { return p.tipe === 'gemini' && p.key; })[0];
+        lsSet(K.gem, g ? g.key : (d.g || ''));
+      } else if (d.g) lsSet(K.gem, d.g);
+      lsSet(K.rbg, d.r || '');
+      try { loadCustomSizes(); renderCustomSizes(); } catch (e) {}
+      try { if (window.PresetUI && window.PresetUI.refresh) window.PresetUI.refresh(); } catch (e) {}
+    }
+    function readLast() { var l = pj(SK_LAST); return (l && typeof l.h === 'string') ? { t: Number(l.t) || 0, h: l.h } : { t: 0, h: '' }; }
+    function saveLast(t, h) { lsSet(SK_LAST, JSON.stringify({ t: t, h: h })); }
+    function tfetch(u, opt) {
+      var c = new AbortController(), t = setTimeout(function() { c.abort(); }, 15000);
+      opt = opt || {}; opt.signal = c.signal;
+      return fetch(u, opt).then(function(r) { clearTimeout(t); return r.json(); }, function(e) { clearTimeout(t); throw e; });
+    }
+    function srvGet() { return tfetch(srvUrl() + (srvUrl().indexOf('?') < 0 ? '?' : '&') + 'action=get&code=' + encodeURIComponent(code())); }
+    function srvPut(data, base) {
+      return tfetch(srvUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'put', code: code(), base: base, data: data }) });
+    }
+    function setSt(s, m) { st = s; stMsg = m || ''; paint(); }
+    function paint() {
+      var e = $('syncStatus');
+      if (!e) return;
+      var t = '', c = 'sy-status';
+      if (!ready()) t = 'Belum tersambung. Isi alamat server dan Kode Sinkron di bawah.';
+      else if (st === 'busy') { t = 'Menyinkron…'; c += ' busy'; }
+      else if (st === 'ok' || (st === 'off' && lastOk)) { var d = new Date(lastOk || Date.now()); t = '✔ Tersambung. Terakhir sinkron ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); c += ' ok'; }
+      else if (st === 'offline') { t = 'Offline. Data aman di perangkat ini, akan disinkron otomatis saat online.'; c += ' err'; }
+      else if (st === 'err') { t = '⚠ Gagal sinkron: ' + stMsg + '. Akan dicoba lagi otomatis.'; c += ' err'; }
+      else t = 'Tersambung. Menunggu sinkron pertama.';
+      e.className = c; e.textContent = t;
+    }
+    function syncNow() {
+      if (busy) return Promise.resolve();
+      if (!ready()) { setSt('off'); return Promise.resolve(); }
+      busy = true; setSt('busy');
+      var tries = 0;
+      function put(data, base) {
+        return srvPut(data, base).then(function(R) {
+          if (R && R.ok) { saveLast(R.t, hsh(snap())); return; }
+          if (R && R.err === 'konflik' && tries++ < 2) return step();
+          throw new Error((R && R.err) || 'put');
+        });
+      }
+      function step() {
+        return srvGet().then(function(S) {
+          if (!S || !S.ok) throw new Error((S && S.err) || 'server');
+          var L = snap(), last = readLast(), changed = hsh(L) !== last.h;
+          if (!S.t) { if (isEmpty(L)) { saveLast(0, hsh(L)); return; } return put(L, 0); }
+          if (S.t === last.t) { if (changed) return put(L, S.t); saveLast(S.t, hsh(L)); return; }
+          var plainPull = !changed && last.t > 0;
+          apply(plainPull ? (S.data || {}) : merge(L, S.data));
+          var after = snap();
+          if (plainPull) { saveLast(S.t, hsh(after)); return; }
+          return put(after, S.t);
+        });
+      }
+      return step().then(function() { busy = false; lastOk = Date.now(); setSt('ok'); },
+        function(e) { busy = false; setSt(navigator.onLine === false ? 'offline' : 'err', String((e && e.message) || e)); });
+    }
+    function b64e(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+    function b64d(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; return JSON.parse(decodeURIComponent(escape(atob(t)))); }
+    function genCode() {
+      var ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(20), o = '';
+      (window.crypto || window.msCrypto).getRandomValues(a);
+      for (var i = 0; i < 20; i++) { o += ch[a[i] % ch.length]; if (i % 4 === 3 && i < 19) o += '-'; }
+      return o;
+    }
+    function connect() {
+      var u = ($('syncUrl').value || '').trim(), c = ($('syncCode').value || '').trim();
+      if (!(SYNC_API_URL && SYNC_API_URL.indexOf('GANTI_DENGAN') === -1)) {
+        if (!/^https:\/\//i.test(u)) { say('Alamat server harus diawali https://'); return; }
+        lsSet(SK_URL, u);
+      }
+      if (c.length < 10) { say('Kode Sinkron minimal 10 karakter'); return; }
+      if (c !== code()) lsDel(SK_LAST);
+      lsSet(SK_CODE, c);
+      paint(); syncNow();
+    }
+    function copyLink() {
+      if (!ready()) { say('Hubungkan dulu'); return; }
+      var d = { v: 1, c: code() };
+      if (!(SYNC_API_URL && SYNC_API_URL.indexOf('GANTI_DENGAN') === -1)) d.u = srvUrl();
+      var link = location.href.split('#')[0] + '#sinkron=' + b64e(d);
+      function ok() { say('Tautan disalin. Buka di perangkat lain, rahasiakan (berisi kode)'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, function() { prompt('Salin tautan ini (rahasia):', link); });
+      else prompt('Salin tautan ini (rahasia):', link);
+    }
+    function importLink() {
+      var m = (location.hash || '').match(/^#sinkron=([A-Za-z0-9_\-]+)$/);
+      if (!m) return;
+      var d = null; try { d = b64d(m[1]); } catch (e) {}
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      if (!d || d.v !== 1 || typeof d.c !== 'string' || d.c.length < 10) { alert('Tautan sinkron rusak atau tidak lengkap.'); return; }
+      if (!confirm('Tautan sinkron terdeteksi.\n\nHubungkan perangkat ini? Data dari perangkat lain digabung dengan data di sini (preset, ukuran, API key).')) return;
+      if (typeof d.u === 'string' && /^https:\/\//i.test(d.u)) lsSet(SK_URL, d.u);
+      if (d.c !== code()) lsDel(SK_LAST);
+      lsSet(SK_CODE, d.c);
+      syncNow();
+    }
+    function bind() {
+      var sh = $('sheetSync');
+      if (!sh) return;
+      $('syncGen').onclick = function() { $('syncCode').value = genCode(); };
+      $('syncConnect').onclick = connect;
+      $('syncNowBtn').onclick = function() { if (!ready()) { say('Hubungkan dulu'); return; } syncNow(); };
+      $('syncLinkBtn').onclick = copyLink;
+      $('syncOff').onclick = function() {
+        if (!ready()) return;
+        if (!confirm('Putuskan sinkron di perangkat ini? Data di perangkat tetap ada, hanya tidak lagi tersambung.')) return;
+        lsDel(SK_CODE); lsDel(SK_LAST); $('syncCode').value = ''; lastOk = 0; setSt('off');
+      };
+      importLink();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+    setInterval(function() {
+      if (!ready() || busy || st === 'err' || st === 'offline') return;
+      if (hsh(snap()) !== readLast().h) { clearTimeout(dirtyTimer); dirtyTimer = setTimeout(syncNow, 1200); }
+    }, 4000);
+    setInterval(function() { if (!document.hidden && ready()) syncNow(); }, 60000);
+    document.addEventListener('visibilitychange', function() { if (!document.hidden && ready()) syncNow(); });
+    window.addEventListener('online', function() { if (ready()) syncNow(); });
+    setTimeout(function() { if (ready()) syncNow(); }, 1500);
+    window.SyncUI = {
+      open: function() {
+        var fixed = SYNC_API_URL && SYNC_API_URL.indexOf('GANTI_DENGAN') === -1;
+        $('syncUrlRow').style.display = fixed ? 'none' : 'block';
+        $('syncUrl').value = lsGet(SK_URL) || '';
+        $('syncCode').value = code();
+        paint();
+        $('sheetSync').classList.add('show');
+      },
+      now: syncNow
+    };
   })();
   </script>
 
