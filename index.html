@@ -8,7 +8,7 @@ Pemilik: Aula (bahasa Indonesia, jawab dan beri label UI dalam bahasa Indonesia)
 
 ATURAN KERJA DARI PEMILIK
 1. Fitur yang SUDAH ADA tidak boleh diubah perilakunya. Hanya mengganti/menambah fitur yang disepakati bersama.
-2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v30]. Versi terakhir: v30.
+2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v31]. Versi terakhir: v31.
 3. Pemilik sering memberi perintah lewat suara/ketikan yang berantakan; tafsirkan maksudnya, tanyakan hanya jika benar-benar ambigu.
 4. Selalu serahkan file index.html utuh di akhir, dan perbarui catatan ini.
 
@@ -21,6 +21,12 @@ PETA FITUR (semua di 1 file)
 - Asisten AI Perintah ([v21], tombol ✨ AI, blok script paling bawah): Gemini menerjemahkan perintah jadi JSON langkah,
   lalu run(s) menjalankannya. Daftar aksi ada di konstanta SYS + fungsi clean() + desc() + run(). Tiga tempat ini
   HARUS selalu diubah bersamaan kalau menambah aksi baru.
+
+YANG DIKERJAKAN DI v31 (bersih-bersih, tanpa mengubah perilaku)
+- Dibuang: semua komentar di dalam kode (JS 146, CSS 30, HTML 6), fungsi askKey (tak terpakai), satu variabel sisa, dan 15 aturan CSS yatim (header-bar, controls, floating-drag-handle, dll).
+- Komentar kode SENGAJA dihapus atas permintaan pemilik. Catatan serah-terima ini satu-satunya dokumentasi: peta fitur di atas tetap berlaku.
+- Pemeriksaan: struktur kode (AST) sebelum/sesudah hapus komentar identik; semua blok script lolos node --check; uji browser headless: tambah foto + teks hasilnya sama dengan v30 (antrean 2, di kertas 5), tanpa galat.
+- Jangan menambah catatan panjang lagi ke dalam kode; taruh di file catatan ini.
 
 YANG DIKERJAKAN DI v30 (AI bisa diganti / banyak penyedia + cadangan otomatis)
 - Tautan "Atur API Key" di panel AI diganti "Atur AI": layar daftar penyedia AI (maks 8). Tiap penyedia: nama, jenis, API key, model, URL, aktif/nonaktif, urutan (▲▼), hapus.
@@ -93,59 +99,13 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Layout Cetak Foto & Teks</title>
-  
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
     body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 8px; overflow-x: hidden; }
-    
-    /* PANEL KONTROL STICKY */
-    .controls { 
-      background: white; 
-      padding: 12px; 
-      border-radius: 8px; 
-      max-width: 100%; 
-      margin: 0 auto 12px auto; 
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      max-height: 98vh;
-      overflow-y: auto;
-    }
-    
-    /* Header dengan Menu Export */
-    .header-bar { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 6px; 
-      gap: 8px;
-    }
-    .header-bar h3 { margin: 0; font-size: 16px; white-space: nowrap; }
-    
-    .header-export {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: #e7f1ff;
-      padding: 4px 6px;
-      border-radius: 6px;
-      border: 1px solid #b6d4fe;
-    }
-    .header-export select {
-      padding: 4px;
-      font-size: 11px;
-      font-weight: bold;
-      border: 1px solid #9ec5fe;
-      border-radius: 4px;
-      background: white;
-    }
-
-    /* ICON DROPDOWN DI HEADER (gaya Photoshop: icon -> klik -> muncul pilihan) */
-    .header-icon-group { display: flex; align-items: center; gap: 6px; }
     .icon-dropdown { position: relative; }
     .icon-dropdown .btn-icon-tool { width: 34px; height: 32px; font-size: 15px; }
     .icon-dropdown-menu {
@@ -176,7 +136,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
     .icon-dropdown-menu button:hover { background: #f1f3f5; }
 
-    /* PANEL SESUAIKAN & GARIS (mirip crop-modal) */
     .adjust-slider-row {
       width: 100%;
       display: flex;
@@ -197,46 +156,43 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       cursor: pointer;
       line-height: 1;
     }
-    
+
     .form-group { margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
     label { font-weight: bold; font-size: 11px; }
-    select, input[type="number"], input[type="file"], input[type="text"], input[type="color"] { 
+    select, input[type="number"], input[type="file"], input[type="text"], input[type="color"] {
       padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px; max-width: 100%;
     }
     input[type="number"] { width: 45px; text-align: center; }
     .custom-size-box { display: none; align-items: center; gap: 4px; background: #fff3cd; padding: 4px 6px; border-radius: 4px; }
-    
+
     .btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
     .btn-add { background: #17a2b8; }
     .btn-text { background: #6f42c1; }
-    .btn-print { background: #28a745; font-size: 12px; padding: 5px 10px; }
     .btn-save { background: #007bff; padding: 5px 8px; font-size: 11px; }
     .btn-reset { background: #ffc107; color: #333; }
     .btn-danger { background: #dc3545; padding: 4px 8px; font-size: 11px; }
     .btn-toggle { background: #6c757d; font-size: 11px; padding: 3px 6px; }
-    
+
     .btn-mode-scroll { background: #28a745; color: white; font-weight: bold; padding: 5px 10px; }
     .btn-mode-edit { background: #ffc107; color: #212529; font-weight: bold; padding: 5px 10px; }
 
-    .btn-icon-tool { 
-      background: #495057; 
-      min-width: 30px; 
-      height: 28px; 
-      padding: 0 5px; 
-      font-size: 11px; 
-      color: white; 
-      border: none; 
-      border-radius: 4px; 
-      cursor: pointer; 
-      display: inline-flex; 
-      align-items: center; 
-      justify-content: center; 
+    .btn-icon-tool {
+      background: #495057;
+      min-width: 30px;
+      height: 28px;
+      padding: 0 5px;
+      font-size: 11px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       gap: 3px;
     }
     .btn-icon-tool:hover { background: #343a40; }
     .btn-icon-tool.active { background: #007bff; }
-    .btn-icon-danger { background: #dc3545; }
-    .btn-icon-danger:hover { background: #bd2130; }
     .btn-icon-tool:disabled { background: #ccc; cursor: not-allowed; }
 
     .style-btn {
@@ -264,21 +220,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       align-items: center;
     }
 
-    .toolbar-divider {
-      width: 1px;
-      height: 20px;
-      background: #dee2e6;
-      margin: 0 1px;
-    }
-
-    .toolbar-group {
-      /* display:contents membuat tombol-tombol di dalam grup ini menjadi item flex
-         langsung dari .toolbar-box, sehingga mengalir mengisi ruang kosong di setiap
-         baris (tidak ada baris yang "mentok" kosong), TANPA mengubah urutan tombol. */
-      display: contents;
-    }
-    
-    /* TAB KERJA — mirip tab browser, tiap tab area kerja sendiri, tersimpan otomatis */
     .tab-bar {
       display: flex;
       align-items: center;
@@ -348,7 +289,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .queue-list th { background: #f8f9fa; position: sticky; top: 0; z-index: 2; }
     .thumb { width: 30px; height: 38px; object-fit: cover; border-radius: 3px; background: #ccc; }
 
-    /* AREA SCROLL DAN BORDER */
     #pages-container {
       width: 100%;
       display: flex;
@@ -451,8 +391,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       transform: translateX(-50%) translateY(0);
     }
 
-
-
     .draggable-frame.photo-frame {
       display: flex;
       align-items: center;
@@ -481,9 +419,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .guide-line-h { height: 1.5px; left: 0; width: 100%; }
     .guide-line-center { background-color: #007bff !important; }
 
-    /* GARIS BANTU KERTAS SISA (non-cetak) — kotak putus-putus kiri/kanan/bawah,
-       nempel di tepi atas kertas, posisi selalu center horizontal (mengikuti
-       cara printer center-feed menarik kertas). Hanya tampil di layar. */
     .scrap-guide {
       position: absolute;
       border-left: 1.5px dashed #ff6a00;
@@ -524,8 +459,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       transform-origin: center center;
     }
 
-    /* Lapisan garis pembatas/border foto — ditaruh SETELAH img-wrapper di DOM
-       supaya selalu tergambar DI ATAS foto (lihat penjelasan di redrawCanvas()). */
     .photo-border-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -534,7 +467,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       pointer-events: none;
     }
 
-    /* [STEP15] Editor Foto Fokus (layar penuh): satu foto besar, kontrol di bawah (HP) / kanan (layar lebar) */
     .crop-modal { display: none; position: fixed; inset: 0; background: #111; z-index: 10000; flex-direction: column; padding: 0; overflow: hidden; }
     .crop-modal-content { background: #1b1b1b; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; overflow: hidden;
       padding: calc(8px + env(safe-area-inset-top, 0px)) 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
@@ -569,7 +501,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       #focusControls { width: 340px; max-height: none; }
     }
 
-    /* TOMBOL MODE MELAYANG - mudah dijangkau jempol tanpa perlu cari di toolbar */
     .floating-mode-btn {
       position: fixed;
       left: 14px;
@@ -591,8 +522,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .floating-mode-btn.mode-scroll { background: #28a745; color: white; }
     .floating-mode-btn.mode-edit { background: #ffc107; color: #212529; }
 
-    /* PANEL MENGAMBANG (Sesuaikan Foto & Garis Pembatas) — tidak menutupi seluruh layar
-       supaya preview foto di halaman tetap terlihat, dan bisa digeser bebas */
     .floating-modal {
       display: none;
       position: fixed;
@@ -624,7 +553,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .floating-modal-header h3 { margin: 0; font-size: 13px; }
     .floating-modal-header .modal-close-x { position: static; }
 
-    /* TOMBOL PROYEK & EKSPOR MENGAMBANG (bisa digeser ke mana saja) */
     .floating-toolbar {
       position: fixed;
       z-index: 2500;
@@ -636,21 +564,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       border-radius: 10px;
       box-shadow: 0 3px 10px rgba(0,0,0,0.28);
     }
-    .floating-drag-handle {
-      cursor: move;
-      touch-action: none;
-      user-select: none;
-      font-size: 14px;
-      font-weight: bold;
-      color: #666;
-      padding: 2px 5px;
-      white-space: nowrap;
-      border-radius: 5px;
-    }
-    .floating-drag-handle:active { background: #e9ecef; }
 
-    /* D-PAD GESER PRESISI (nudge) — mengambang, untuk menggeser objek terpilih sedikit demi sedikit
-       tersembunyi secara default, baru muncul saat tombol "✛ Geser" di toolbar diketuk */
     .floating-toolbar.nudge-pad {
       display: none;
       flex-direction: column;
@@ -681,12 +595,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       padding: 0;
       font-size: 13px;
     }
-    .nudge-pad .floating-drag-handle {
-      text-align: center;
-      font-size: 10px;
-      background: #f1f3f5;
-      padding: 3px 0;
-    }
     .nudge-grid {
       display: grid;
       grid-template-columns: 30px 30px 30px;
@@ -704,27 +612,29 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
     @media print {
       body { background: none; padding: 0; margin: 0; }
-      .controls, .crop-modal, .guide-line, .scrap-guide, .page-label, .floating-mode-btn,
-      #licenseInfoBar, #licenseOverlay, .autosave-indicator { display: none !important; }
+.crop-modal,
+.guide-line,
+.scrap-guide,
+.page-label,
+.floating-mode-btn,
+#licenseInfoBar,
+#licenseOverlay,
+.autosave-indicator{ display: none !important; }
       #pages-container { padding: 0; display: block; }
       .page-wrapper { page-break-after: always; margin: 0; height: auto !important; width: 210mm !important; }
       .canvas-scaler { transform: none !important; width: 210mm !important; height: 297mm !important; }
-      .a4-canvas { 
-        box-shadow: none; 
-        margin: 0; 
-        width: 210mm !important; 
-        height: 297mm !important; 
-        border: none; 
+      .a4-canvas {
+        box-shadow: none;
+        margin: 0;
+        width: 210mm !important;
+        height: 297mm !important;
+        border: none;
       }
       .draggable-frame { border: none !important; background: transparent !important; }
       .draggable-frame.selected { border: none !important; box-shadow: none !important; }
       @page { size: 210mm 297mm; margin: 0; }
     }
 
-    /* =====================================================================
-       TAMPILAN BARU GAYA CANVA (v8) — hanya tata letak/visual.
-       Semua fungsi & ID elemen lama tetap sama.
-       ===================================================================== */
     @media screen {
       html, body { height: 100%; }
       body { padding: 0; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: #e9ebf0; }
@@ -732,7 +642,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
     #licenseInfoBar { position: static !important; flex: 0 0 auto; }
 
-    /* Bar atas */
     .topbar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px;
       padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top, 0px));
       background: linear-gradient(90deg, #00c4cc, #7d2ae8); color: #fff; position: relative; z-index: 2000; }
@@ -744,13 +653,11 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .tb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .topbar .icon-dropdown-menu { top: 44px; }
 
-    /* Tab kerja */
     .tab-bar.app-chrome { flex: 0 0 auto; margin: 0; padding: 6px 10px; background: #fff; border-bottom: 1px solid #e5e7eb;
       overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
     .tab-bar.app-chrome::-webkit-scrollbar { display: none; }
     .tab-bar .tab-btn, .tab-bar .tab-add-btn { flex: 0 0 auto; }
 
-    /* Area preview di tengah */
     .workspace { flex: 1 1 auto; min-height: 0; position: relative; background: #e9ebf0; overflow: hidden; }
     #pages-container { position: absolute; inset: 0; width: auto; align-items: flex-start; padding: 12px 8px 24px; gap: 12px;
       overflow: auto; -webkit-overflow-scrolling: touch; }
@@ -761,7 +668,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       width: 46px; height: 46px; font-size: 20px; z-index: 50; }
     .autosave-indicator { top: 96px !important; bottom: auto !important; }
 
-    /* Dock bawah: panel opsi + toolbar yang bisa digeser */
     .dock { flex: 0 0 auto; background: #fff; border-radius: 18px 18px 0 0; box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
       position: relative; z-index: 1800; }
     .tool-strip { display: flex; gap: 2px; overflow-x: auto; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
@@ -774,11 +680,10 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .tool-btn:active { background: #f0eaff; }
     .tool-btn.active { background: #ede7ff; color: #5b21d6; }
     .tool-btn.tool-danger { color: #d63031; }
-    /* [STEP1] tool khusus terseleksi: sembunyi default, tampil saat body.has-sel */
+
     .tool-btn.needs-sel { display: none; }
     body.has-sel .tool-btn.needs-sel { display: flex; }
 
-    /* Panel opsi (muncul di atas toolbar saat alat diketuk) */
     .sheet { display: none; }
     .sheet.show { display: block; }
     .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
@@ -798,7 +703,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     #sheetAdd .btn { padding: 9px 12px; font-size: 12px; }
     #sheetAdd #imageInput { font-size: 12px; }
 
-    /* [STEP6] Ukuran custom yang bisa disimpan permanen (Ukuran Saya) */
     .custom-size-box { flex-wrap: wrap; }
     .my-sizes-box { margin-top: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 6px; background: #fff; }
     .my-sizes-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
@@ -810,7 +714,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .my-size-row:first-child { border-top: none; }
     .my-size-pick { flex: 1; text-align: left; background: none; border: none; font-size: 12px; color: #212529; padding: 6px 4px; cursor: pointer; border-radius: 4px; }
     .my-size-pick:hover { background: #f1f3f5; }
-    /* [STEP7] Ubah ukuran foto yang sudah ada di antrean */
+
     .resize-box { margin-top: 4px; }
     .resize-box select { width: 100%; max-width: 135px; font-size: 11px; padding: 3px; }
     .resize-custom { display: none; align-items: center; gap: 3px; flex-wrap: wrap; margin-top: 3px; background: #fff3cd; padding: 3px 5px; border-radius: 4px; }
@@ -819,7 +723,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     .resize-custom .btn { padding: 4px 8px; font-size: 11px; }
     .my-size-del { background: #fff0f0; border: 1px solid #f5c2c7; color: #b02a37; border-radius: 4px; width: 34px; height: 30px; cursor: pointer; font-size: 14px; }
 
-    /* [STEP4] Batasi tinggi panel bawah agar preview tidak sempit (HP pendek/landscape) */
     .sheet, #sheetHost .floating-modal { max-height: min(38vh, 300px); }
     @media (max-height: 520px) {
       .sheet, #sheetHost .floating-modal { max-height: 34vh; padding-top: 6px !important; padding-bottom: 8px !important; }
@@ -829,22 +732,16 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       .tool-btn { padding: 3px 8px; gap: 1px; }
       .tool-btn .ti { font-size: 18px; }
     }
-    /* [STEP5] Petunjuk toolbar bisa digeser: tepi memudar saat masih ada isi di kiri/kanan */
+
     .tool-strip { --fl: 0px; --fr: 0px;
       -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
       mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); }
 
-    /* [STEP3] Geser Presisi & Rata/Layer jadi panel bawah (ikut gaya #sheetHost .floating-modal) */
     #sheetHost .nudge-pad .nudge-grid { grid-template-columns: 46px 46px 46px; grid-template-rows: 42px 42px 42px; gap: 5px; margin: 4px auto 2px; }
     #sheetHost .nudge-pad .nudge-btn { width: 100%; height: 100%; font-size: 18px; }
     #sheetHost .align-pad-grid { justify-content: center; gap: 6px; padding-top: 4px; }
     #sheetHost .align-pad-grid .btn-icon-tool { width: 52px; height: 40px; min-width: 52px; font-size: 14px; }
 
-
-    /* ===================== [STEP8] LAYAR LEBAR (tablet landscape, laptop, PC) =====================
-       HP & tablet portrait: tampilan lama (toolbar + panel di bawah) TIDAK berubah.
-       Layar lebar (>=900px lebar DAN >=560px tinggi): toolbar & panel pindah ke SIDEBAR KIRI,
-       preview halaman di kanan jadi lebih besar & tidak "loncat" saat panel dibuka/ditutup. */
     @media screen and (min-width: 900px) and (min-height: 560px) {
       .app-shell { display: grid; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); }
       #licenseInfoBar, .topbar, .tab-bar.app-chrome { grid-column: 1 / -1; }
@@ -861,7 +758,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       .autosave-indicator { top: 110px !important; }
     }
 
-    /* [STEP9a] Toolbar teks ala Canva: tombol "Teks" hanya muncul saat ada teks terseleksi */
     .tool-btn.needs-text { display: none; }
     body.has-text-sel .tool-btn.needs-text { display: flex; }
     #sheetText .tx-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
@@ -892,7 +788,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 </head>
 <body class="edit-mode">
 
-  <!-- ===================== SISTEM LISENSI: OVERLAY KUNCI & INFO TRIAL ===================== -->
   <div id="licenseInfoBar" style="display:none; position:fixed; top:0; left:0; right:0; background:#ffc107; color:#212529; text-align:center; font-size:11px; padding:4px 6px; z-index:5000; font-weight:bold;"></div>
 
   <div id="licenseOverlay" style="display:none; position:fixed; inset:0; background:rgba(10,10,10,0.94); z-index:999999; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; color:white;">
@@ -937,7 +832,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
   <div class="tab-bar app-chrome" id="tabBar"></div>
 
-  <!-- Elemen asli dipertahankan (disembunyikan) agar semua fungsi & event listener lama tetap berjalan tanpa error -->
   <div style="display:none;">
     <select id="exportFormat">
       <option value="pdf">PDF (HD)</option>
@@ -1009,7 +903,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         <input type="file" id="mySizesImportInput" accept=".json,application/json" style="display:none;">
       </div>
 
-
       </section>
       <section class="sheet" id="sheetQueue">
         <div class="sheet-head"><b>📋 Daftar Antrean Item</b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
@@ -1028,7 +921,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           </table>
         </div>
       </div>
-
 
       </section>
       <section class="sheet" id="sheetLayout">
@@ -1119,8 +1011,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       </div>
   </div>
 
-  <!-- PANEL ZOOM TAMPILAN — kecil & diposisikan di pojok bawah-kanan (tidak menutupi
-       tab kerja / header), tetap bisa digeser bebas kalau mau dipindah -->
   <div id="zoomModal" class="floating-modal" style="top: auto; bottom: 90px; right: 10px; width: 210px; padding: 6px;">
     <div id="zoomModalHeader" class="floating-modal-header" style="margin: 0 0 2px 0; padding: 2px 2px 5px 2px;">
       <h3 style="font-size: 11px;">🔍 Zoom</h3>
@@ -1139,8 +1029,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     </div>
   </div>
 
-
-      <!-- [STEP9a] Panel Teks (toolbar teks ala Canva) -->
       <section class="sheet" id="sheetText">
         <div class="sheet-head"><b>🔤 Teks</b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
         <div class="tx-row"><input type="text" id="txInput" maxlength="200" placeholder="Ketik teks…" autocomplete="off"></div>
@@ -1173,7 +1061,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         </div>
       </section>
 
-      <!-- [STEP3] Panel Geser Presisi & Rata/Layer: sekarang panel bawah (di dalam #sheetHost) -->
       <div id="nudgePad" class="floating-toolbar nudge-pad floating-modal">
         <div id="nudgePadHandle" class="floating-modal-header">
           <h3>✛ Geser Presisi</h3>
@@ -1232,9 +1119,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     </nav>
   </div>
   </div>
-
-
-
 
   <div id="editHint" style="display:none; position:fixed; left:50%; transform:translateX(-50%); top:104px; z-index:2500; background:rgba(33,37,41,0.92); color:#fff; font-size:12px; padding:7px 12px; border-radius:18px; pointer-events:none; white-space:nowrap; box-shadow:0 2px 10px rgba(0,0,0,.25);">✏️ Klik 2× foto, atau tekan <b>Edit Foto</b> di bawah</div>
   <div id="autoSaveIndicator" class="autosave-indicator">💾 Tersimpan otomatis</div>
@@ -1318,8 +1202,8 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </div>
 
   <script>
-    var queueItems = []; 
-    var placedInstances = []; 
+    var queueItems = [];
+    var placedInstances = [];
     var selectedInstanceIds = [];
     var activeInstanceIndex = null;
     var isMultiSelectMode = false;
@@ -1336,22 +1220,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     var MIN_SAFE_DPI = 150;
     var CAUTION_DPI = 200;
 
-    /* Zoom tampilan (bukan zoom foto) — hanya memperbesar/memperkecil TAMPILAN halaman
-       di layar untuk memudahkan kerja presisi, tidak memengaruhi ukuran cetak. */
     var viewZoomPercent = 100;
     var MIN_VIEW_ZOOM = 25;
-    var MAX_VIEW_ZOOM = 1000;   /* [v16] dulu 200% — sekarang bisa sampai 10x dari ukuran 'pas halaman' */
+    var MAX_VIEW_ZOOM = 1000;
 
-    /* Panduan kertas sisa/potongan (non-cetak) — berlaku sama di semua halaman,
-       karena posisinya mengikuti perilaku fisik printer (center-feed), bukan konten halaman. */
     var scrapGuide = { enabled: false, wCm: 5, hCm: 5 };
 
-    /* ===================== TAB KERJA (mirip tab browser) =====================
-       Tiap tab kerja punya area kerjanya sendiri (daftar foto/teks, layout, garis
-       pembatas, dsb) sehingga operator bisa berpindah-pindah tanpa harus
-       menyelesaikan satu tab dulu. Tersimpan otomatis ke localStorage persis
-       seperti autosave biasa — tetap ada walau browser ditutup / HP direstart.
-       Maksimal 5 tab supaya HP tidak berat kalau kebanyakan foto tersimpan. */
     var TABS_STORAGE_KEY = 'layoutFotoTabsV1';
     var MAX_TABS = 5;
     var tabs = [];
@@ -1562,23 +1436,10 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       migrateOldAutoSaveToTabs();
     }
 
-    /* ===================== SISTEM LISENSI: TRIAL 2 HARI + AKTIVASI VIA SERVER =====================
-       Trial & status lisensi DIHITUNG DAN DISIMPAN DI SERVER (Google Apps Script + Google Sheet),
-       BUKAN hanya di localStorage/tanggal HP. Ini penting supaya trial tidak bisa "direset" cuma
-       dengan menghapus data browser atau mengubah tanggal HP — karena begitu deviceId yang sama
-       dicek lagi ke server, server tetap membaca tanggal mulai & tanggal habis yang tersimpan di
-       Sheet, bukan mempercayai jam HP pengguna.
-
-       CATATAN JUJUR (batasan): karena ini file HTML/JS murni yang jalan di browser, pengguna yang
-       cukup paham teknis (buka DevTools/Inspect Element) tetap MUNGKIN bisa menyembunyikan overlay
-       ini secara manual di browser mereka sendiri. Server tetap mencegah trik yang paling umum
-       (hapus cache, ganti tanggal HP, install ulang lalu klaim trial baru pakai deviceId lama, dsb),
-       tapi ini bukan proteksi seperti software berbayar profesional yang punya server backend penuh.
-    */
     var LICENSE_API_URL = 'GANTI_DENGAN_URL_WEB_APP_GOOGLE_APPS_SCRIPT_ANDA';
     var LICENSE_CACHE_KEY = 'layoutFotoLicenseCacheV1';
     var LICENSE_DEVICE_KEY = 'layoutFotoDeviceIdV1';
-    var LICENSE_OFFLINE_GRACE_MS = 24 * 60 * 60 * 1000; // izin pakai offline maksimal 24 jam sejak cek sukses terakhir
+    var LICENSE_OFFLINE_GRACE_MS = 24 * 60 * 60 * 1000;
     var licenseState = { status: 'checking', plan: null, daysLeft: null };
 
     function getDeviceId() {
@@ -1626,9 +1487,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
 
     function handleLicenseOffline() {
-      // Tidak ada koneksi ke server. Pakai status terakhir yang tersimpan di HP, TAPI hanya
-      // berlaku sampai 24 jam sejak cek sukses terakhir, supaya aplikasi tidak bisa dipakai
-      // selamanya tanpa pernah online sama sekali.
       var cached = getCachedLicenseState();
       if (cached && (Date.now() - cached.savedAt) < LICENSE_OFFLINE_GRACE_MS) {
         var st = cached.state;
@@ -1687,12 +1545,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     }
 
-
-
-    /* ===================== PANEL MENGAMBANG YANG BISA DIGESER (drag) ===================== */
     function makeFloatingDraggable(panel, handle) {
       if (!panel || !handle) return;
-      if (panel.classList.contains('floating-modal')) return; // jadi panel bawah (gaya Canva), tidak digeser
+      if (panel.classList.contains('floating-modal')) return;
       var dragging = false, startX, startY, startLeft, startTop;
 
       handle.addEventListener('pointerdown', function(e) {
@@ -1734,7 +1589,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       handle.addEventListener('pointercancel', stopDrag);
     }
 
-    /* ===================== GESER PRESISI (NUDGE) VIA TOMBOL D-PAD ===================== */
     var nudgeStepMm = 0.5;
 
     function toggleNudgePad() {
@@ -1794,15 +1648,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
     }
 
-    /* ===================== EFISIENSI: riwayat Undo/Redo tanpa menggandakan data foto =====================
-       Sebelumnya setiap saveState()/undo()/redo() menyalin SELURUH data lewat
-       JSON.parse(JSON.stringify(...)), termasuk data base64 foto yang besar — padahal
-       base64 foto (field .src) tidak pernah diubah ISI-nya oleh aksi geser/putar/hapus/dll
-       (kalaupun berubah, misal lewat crop, selalu lewat GANTI referensi baru, bukan diubah
-       di tempat). Jadi field .src aman dipakai bareng (share reference) tanpa disalin ulang,
-       sedangkan properti lain tetap disalin utuh (deep copy) seperti biasa supaya riwayat
-       tetap independen dari data yang sedang aktif. Ini mencegah memori membengkak drastis
-       kalau ada banyak foto berukuran besar & banyak langkah undo. */
     function cloneItemsForHistory(list) {
       return list.map(function(item) {
         var copy = {};
@@ -1881,7 +1726,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (btnRedoModal) btnRedoModal.disabled = (redoStack.length === 0);
     }
 
-    /* ===================== AUTO SAVE ===================== */
     function scheduleAutoSave() {
       if (autoSaveTimer) clearTimeout(autoSaveTimer);
       autoSaveTimer = setTimeout(function() {
@@ -1905,7 +1749,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }, 1500);
     }
 
-    /* ===================== SIMPAN & BUKA PROYEK (mirip file .PSD/.DOCX) ===================== */
     var PROJECT_FILE_MARKER = 'layout-foto-project';
     var PROJECT_FILE_VERSION = 1;
 
@@ -1976,7 +1819,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       reader.readAsText(file);
     }
 
-    /* ===================== KUALITAS CETAK (DPI) ===================== */
     function computeDPI(item) {
       if (!item || item.type !== 'photo' || !item.natW || !item.natH || !item.wCm || !item.hCm) return null;
       var widthIn = item.wCm / 2.54;
@@ -2000,8 +1842,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
       return true;
     }
-
-
 
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -2029,7 +1869,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
       document.getElementById('loadProjectInput').addEventListener('change', importProjectFile);
 
-      // Event listener untuk Slider Jarak & Margin agar bereaksi saat digeser
       document.getElementById('spacingSlider').addEventListener('input', function() {
         autoArrangeAll();
       });
@@ -2093,13 +1932,10 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       initPinchZoom();
       initTabs();
 
-      // Cek status lisensi/trial saat aplikasi dibuka, lalu cek ulang tiap 1 jam
-      // selama aplikasi tetap terbuka (supaya begitu masa trial habis, terkunci tanpa perlu reload).
       checkLicense();
       setInterval(checkLicense, 60 * 60 * 1000);
     });
 
-    /* Peringatan sebelum menutup / me-refresh tab agar pekerjaan tidak hilang tanpa sadar */
     window.addEventListener('beforeunload', function(e) {
       if (queueItems.length > 0 || placedInstances.length > 0) {
         e.preventDefault();
@@ -2108,7 +1944,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
     });
 
-    /* ===================== VALIDASI INPUT (mencegah hang/freeze) ===================== */
     function sanitizeSizeInput(input, fallback, maxVal) {
       var v = parseFloat(input.value);
       if (isNaN(v) || v <= 0) v = fallback;
@@ -2127,7 +1962,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var scalers = document.querySelectorAll('.canvas-scaler');
       if (scalers.length === 0) return;
 
-      // Muat SELURUH halaman di area preview (lebar & tinggi), seperti Canva
       var cont = document.getElementById('pages-container');
       var availableWidth = ((cont && cont.clientWidth) || document.body.clientWidth || window.innerWidth) - 16;
       var availableHeight = (cont && cont.clientHeight) ? (cont.clientHeight - 12 - 24 - 22) : 0;
@@ -2141,7 +1975,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var widthScaleRaw = availableWidth / a4PxWidth;
       if (fitScale > 1) fitScale = 1;
       if (fitScale < 0.2) fitScale = 0.2;
-      window._viewFit = { page: fitScale, width: widthScaleRaw };   /* [v16] dipakai tombol Pas Lebar / 100% Asli */
+      window._viewFit = { page: fitScale, width: widthScaleRaw };
 
       var scale = fitScale * (viewZoomPercent / 100);
 
@@ -2152,7 +1986,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     }
 
-    /* ===================== ZOOM TAMPILAN ===================== */
     function toggleZoomModal() {
       var modal = document.getElementById('zoomModal');
       var btn = document.getElementById('btnToggleZoom');
@@ -2166,9 +1999,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (btn) btn.classList.remove('active');
     }
 
-    /* [v16] Zoom tampilan: rentang 25%–1000% (100% = satu halaman pas di layar), slider skala log
-       supaya zoom kecil & besar sama-sama halus. Zoom mengikuti titik kursor / jari (anchor),
-       bukan selalu ke pojok. */
     function viewZoomToSlider(p) {
       return Math.round(Math.log(p / MIN_VIEW_ZOOM) / Math.log(MAX_VIEW_ZOOM / MIN_VIEW_ZOOM) * 1000);
     }
@@ -2181,7 +2011,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (!(val >= MIN_VIEW_ZOOM)) val = MIN_VIEW_ZOOM;
       if (val > MAX_VIEW_ZOOM) val = MAX_VIEW_ZOOM;
 
-      /* catat titik halaman yang ada di bawah anchor sebelum zoom berubah */
       var cont = document.getElementById('pages-container');
       var ref = null, fx = 0, fy = 0, ax = 0, ay = 0;
       if (cont) {
@@ -2208,7 +2037,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (lb) lb.innerText = val + '%';
       adjustCanvasScale();
 
-      /* geser scroll supaya titik yang sama tetap di bawah anchor */
       if (cont && ref) {
         var r2 = ref.getBoundingClientRect();
         cont.scrollLeft += (r2.left + fx * r2.width) - ax;
@@ -2224,7 +2052,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       setViewZoom(sliderToViewZoom(parseInt(document.getElementById('zoomSlider').value, 10)), null, true);
     }
 
-    /* Tombol cepat: Pas Halaman (seluruh halaman kelihatan), Pas Lebar, 100% Asli (1 px layar = 1 px halaman) */
     function zoomFitPage() { setViewZoom(100); }
     function zoomFitWidth() {
       var f = window._viewFit; if (!f) return;
@@ -2235,8 +2062,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       setViewZoom(100 / f.page);
     }
 
-    /* Cubit dua jari (pinch) langsung di kanvas untuk zoom tampilan — meta viewport sudah
-       user-scalable=no jadi pinch browser bawaan tidak aktif, ini gantinya versi kita sendiri. */
     function initPinchZoom() {
       var container = document.getElementById('pages-container');
       if (!container) return;
@@ -2277,12 +2102,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       document.getElementById('customSizeBox').style.display = (select.value === 'custom') ? 'flex' : 'none';
     }
 
-
-    /* ===================== [STEP6] UKURAN SAYA: simpan ukuran custom permanen =====================
-       Daftar ukuran custom disimpan di localStorage browser (tetap ada walau aplikasi ditutup /
-       pindah aplikasi / HP direstart). Catatan: tersimpan PER BROWSER dan PER ALAMAT file — kalau
-       ganti HP/browser, pakai tombol Ekspor lalu Impor. Nilai option dibuat "WxH" (cm) supaya
-       addParsedPhotoToCanvas() bisa memakainya tanpa perubahan. */
     var CUSTOM_SIZES_KEY = 'layoutFotoCustomSizesV1';
     var MAX_CUSTOM_SIZES = 30;
     var CUSTOM_SIZE_MAX_W = 20;
@@ -2347,7 +2166,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var prevCustomId = prevOpt ? prevOpt.getAttribute('data-custom-id') : null;
       var prevValue = select.value;
 
-      // 1) dropdown: grup "Ukuran Saya" dibangun ulang (hanya kalau ada isinya)
       var oldGroup = document.getElementById('customSizesGroup');
       if (oldGroup) oldGroup.parentNode.removeChild(oldGroup);
       if (customSizes.length > 0) {
@@ -2368,7 +2186,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         select.insertBefore(group, customOpt);
       }
 
-      // 2) pulihkan pilihan sebelumnya (kalau masih ada)
       var restored = false;
       if (prevCustomId) restored = selectCustomSizeOption(prevCustomId);
       if (!restored) {
@@ -2381,7 +2198,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (!restored) select.value = '2.8x3.8';
       toggleCustomInput();
 
-      // 3) daftar kelola (pilih / hapus)
       var list = document.getElementById('mySizesList');
       if (!list) return;
       list.innerHTML = '';
@@ -2464,7 +2280,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (!confirm('Hapus ukuran "' + customSizeLabel(target) + '" dari Ukuran Saya?\n\nFoto yang sudah ada di antrean tidak ikut berubah.')) return;
       customSizes = customSizes.filter(function(s) { return s.id !== id; });
       persistCustomSizes();
-      // render ditunda agar klik tidak dianggap "klik di luar panel" (tombol lama sudah hilang dari DOM)
       setTimeout(renderCustomSizes, 0);
     }
 
@@ -2531,15 +2346,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (imp) imp.addEventListener('change', importCustomSizes);
     });
 
-
-    /* ===================== [STEP7] UBAH UKURAN FOTO YANG SUDAH DI ANTREAN =====================
-       Foto yang sudah masuk (dan sudah diedit) bisa diganti ukurannya tanpa hapus & masukkan ulang.
-       Semua salinan (qty) foto itu ikut berubah. Hasil edit DIPERTAHANKAN: zoom, geser (pan, dalam
-       pecahan bingkai), putar, flip, Sesuaikan, Garis. Karena foto digambar dengan mode "cover",
-       foto otomatis menyesuaikan bingkai baru; hanya pan yang dibatasi (clamp) agar tidak muncul
-       area putih di tepi. Orientasi tiap salinan (potret/lanskap) dipertahankan.
-       Posisi lama dipakai lagi kalau masih muat & tidak bertabrakan; kalau tidak, hanya salinan
-       itu yang dirapikan ulang ke ruang kosong (item lain tidak digeser). Bisa di-Undo. */
     function escHtmlAttr(str) {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -2547,7 +2353,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     function buildResizeControlHtml(itemId) {
       var src = document.getElementById('sizeSelect');
       var opts = '<option value="" selected>📐 Ukuran…</option>';
-      var inGroup = false;
       Array.prototype.forEach.call(src.children, function(node) {
         if (node.tagName === 'OPTGROUP') {
           opts += '<optgroup label="' + escHtmlAttr(node.label) + '">';
@@ -2628,7 +2433,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
       saveState();
 
-      // Data antrean: orientasi mengikuti foto asli (sama seperti saat foto ditambahkan)
       var natLandscape = (item.natW || 1) > (item.natH || 1);
       item.wCm = natLandscape ? longSide : shortSide;
       item.hCm = natLandscape ? shortSide : longSide;
@@ -2637,7 +2441,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var oldPos = {};
       insts.forEach(function(inst) {
         oldPos[inst.instId] = { x: inst.leftMm, y: inst.topMm, page: inst.pageIndex || 0 };
-        // Orientasi tiap salinan dipertahankan (bisa beda kalau sebagian sudah diputar 90°)
         var isLandscapeNow;
         if (Math.abs(inst.w - inst.h) > 0.01) {
           isLandscapeNow = inst.w > inst.h;
@@ -2650,7 +2453,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         clampInstancePan(inst);
       });
 
-      // Pakai posisi lama kalau masih muat di halaman & tidak menabrak yang lain
       var accepted = {};
       placedInstances.forEach(function(inst) {
         if (insts.indexOf(inst) === -1) {
@@ -2677,19 +2479,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
       renderQueueTable();
       if (needMove.length > 0) {
-        autoArrangeSpecific(needMove);   // sekaligus menggambar ulang kanvas
+        autoArrangeSpecific(needMove);
       } else {
         redrawCanvas();
       }
     }
 
-    /* ===================== EFISIENSI: batasi ukuran foto sebelum disimpan ke memori =====================
-       Foto dari kamera HP modern bisa berukuran belasan-puluhan MP (misal 4000x3000px atau lebih),
-       kalau disimpan mentah-mentah sebagai base64 (apalagi dipakai berkali-kali di riwayat Undo &
-       autosave), ini yang paling bikin aplikasi berat/lag bahkan bisa error di HP.
-       4000px di sisi terpanjang jauh di atas kebutuhan cetak 300 DPI untuk preset terbesar di
-       aplikasi ini (Full A4 21x29.7cm butuh ±3508px), jadi kualitas cetak tetap aman. Kalau foto
-       aslinya sudah lebih kecil dari batas ini, tidak diapa-apakan (dipakai apa adanya). */
     var MAX_PHOTO_DIMENSION = 4000;
     var PHOTO_JPEG_QUALITY = 0.92;
 
@@ -2712,8 +2507,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         ctx.drawImage(img, 0, 0, newW, newH);
         return { dataUrl: canvas.toDataURL('image/jpeg', PHOTO_JPEG_QUALITY), w: newW, h: newH };
       } catch (err) {
-        // Kalau karena suatu hal proses resize gagal, jangan sampai fitur upload jadi error —
-        // pakai saja foto ukuran asli sebagai fallback aman.
         console.error('Gagal mengecilkan foto, memakai ukuran asli:', err);
         return { dataUrl: img.src, w: w, h: h };
       }
@@ -2725,14 +2518,14 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         alert("Pilih file foto terlebih dahulu!");
         return;
       }
-      
+
       saveState();
       var files = Array.from(fileInput.files);
       var loadedCount = 0;
 
       files.forEach(function(file) {
         var reader = new FileReader();
-        reader.onload = function(e) { 
+        reader.onload = function(e) {
           var img = new Image();
           img.src = e.target.result;
           img.onload = function() {
@@ -2752,17 +2545,15 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var select = document.getElementById('sizeSelect');
       var qty = parseInt(document.getElementById('qtyInput').value);
       if (isNaN(qty) || qty < 1) qty = 1;
-      if (qty > 200) qty = 200; // batas aman agar tidak membekukan browser
+      if (qty > 200) qty = 200;
       var wCm = 0, hCm = 0;
       var labelName = select.options[select.selectedIndex].text;
 
       if (select.value === 'custom') {
         wCm = parseFloat(document.getElementById('customW').value);
         hCm = parseFloat(document.getElementById('customH').value);
-        // Validasi: cegah nilai kosong/aneh/negatif/terlalu besar yang bisa membuat tata letak macet
         if (isNaN(wCm) || wCm <= 0) wCm = 5.5;
         if (isNaN(hCm) || hCm <= 0) hCm = 8.5;
-        // Batas realistis mengikuti dimensi kertas A4 (21 x 29.7 cm) agar tidak "kebablasan"
         if (wCm > 20) wCm = 20;
         if (hCm > 28) hCm = 28;
         document.getElementById('customW').value = wCm;
@@ -2782,13 +2573,13 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         var temp = wCm; wCm = hCm; hCm = temp;
       }
 
-      var newItem = { 
-        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
-        type: 'photo', 
-        src: base64Data, 
-        label: labelName, 
-        wCm: wCm, 
-        hCm: hCm, 
+      var newItem = {
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'photo',
+        src: base64Data,
+        label: labelName,
+        wCm: wCm,
+        hCm: hCm,
         qty: qty,
         rotation: 0,
         natW: natW,
@@ -2868,7 +2659,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       saveState();
       var qtyVal = parseInt(newQty);
       if (isNaN(qtyVal) || qtyVal < 1) qtyVal = 1;
-      if (qtyVal > 200) qtyVal = 200; // batas aman agar tidak membekukan browser
+      if (qtyVal > 200) qtyVal = 200;
       var itemObj = queueItems.find(function(i) { return i.id === id; });
       if (!itemObj || itemObj.type !== 'photo') return;
       itemObj.qty = qtyVal;
@@ -2936,7 +2727,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           inst.isBold = itemObj.isBold;
           inst.isItalic = itemObj.isItalic;
           inst.isUnderline = itemObj.isUnderline;
-          inst.w = baseW; 
+          inst.w = baseW;
           inst.h = baseH;
         }
       });
@@ -2977,7 +2768,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
               dpiWarning = '<div style="color:#e07800; font-size:10px;">⚠ Resolusi cukup (~' + Math.round(dpi) + ' DPI)</div>';
             }
           }
-          row.innerHTML = 
+          row.innerHTML =
             '<td><img src="' + item.src + '" class="thumb" onclick="selectInstanceFromQueue(\'' + item.id + '\')" style="cursor:pointer;" title="Klik untuk pilih"></td>' +
             '<td><b>' + item.wCm + ' x ' + item.hCm + ' cm</b>' + (isLandscape ? ' [Lanskap]' : ' [Potret]') + dpiWarning + buildResizeControlHtml(item.id) + '</td>' +
             '<td><input type="number" min="1" max="200" value="' + item.qty + '" onchange="updateQueueQty(\'' + item.id + '\', this.value)" style="width:40px; text-align:center;"></td>' +
@@ -2987,7 +2778,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           var italicClass = item.isItalic ? 'active' : '';
           var underlineClass = item.isUnderline ? 'active' : '';
 
-          row.innerHTML = 
+          row.innerHTML =
             '<td><span style="font-family:' + item.fontFamily + '; font-size:11px; font-weight:bold; color:' + item.color + '; cursor:pointer;" onclick="selectInstanceFromQueue(\'' + item.id + '\')">[Teks]</span></td>' +
             '<td style="text-align: left;">' +
               '<div style="margin-bottom: 2px;"><b>Teks:</b> <input type="text" value="' + String(item.text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" oninput="updateTextProperty(\'' + item.id + '\', \'text\', this.value)" style="width: 65%; padding: 2px;"></div>' +
@@ -3019,13 +2810,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       autoArrangeAll();
     }
 
-    /* Batas area tempat "Rapikan" boleh menaruh foto/teks per halaman.
-       Kalau Sisa Kertas AKTIF, area rapikan dipersempit jadi cuma kotak
-       Sisa Kertas itu saja (posisinya sama persis dengan overlay garis
-       putus-putus di layar: nempel tepi atas, center horizontal) — jadi
-       hasil "Rapikan" langsung masuk ke area kertas sisa, nggak usah
-       digeser manual lagi. Kalau nonaktif, baliknya area penuh 210x297mm
-       seperti sebelumnya (perilaku lama tidak berubah). */
     function getArrangeBounds() {
       var pageW = 210, pageH = 297;
       if (scrapGuide && scrapGuide.enabled) {
@@ -3037,12 +2821,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       return { left: 0, top: 0, right: pageW, bottom: pageH, pageW: pageW, pageH: pageH };
     }
 
-    /* MENATAI KESELURUHAN JIKA DITEKAN TOMBOL 'RAPIKAN MULTI-HALAMAN' ATAU GESER SLIDER */
-    /* [v24] Penempatan pintar untuk Rapikan:
-       - Foto dicoba 2 orientasi (potret/lanskap); dipakai yang memberi posisi lebih awal (halaman lebih depan / lebih atas),
-         jadi ruang kosong terisi. Seri imbang = tidak diputar. Bisa dimatikan lewat centang "Putar otomatis".
-       - Foto yang tak muat di area cetak (A4 penuh, 8R, A4 yang terlanjur diputar) ditaruh di halaman kosong sendiri,
-         dipilih orientasi yang paling sedikit melebihi kertas. */
     function flipOrient(inst) {
       var r = ((inst.rotation || 0) % 360 + 360) % 360;
       var deg = (r === 90) ? -90 : 90;
@@ -3108,9 +2886,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var pagesRects = [];
 
       function overlaps(r1, r2, sp) {
-        return !(r1.x + r1.w + sp <= r2.x + 0.001 || 
-                 r1.x >= r2.x + r2.w + sp - 0.001 || 
-                 r1.y + r1.h + sp <= r2.y + 0.001 || 
+        return !(r1.x + r1.w + sp <= r2.x + 0.001 ||
+                 r1.x >= r2.x + r2.w + sp - 0.001 ||
+                 r1.y + r1.h + sp <= r2.y + 0.001 ||
                  r1.y >= r2.y + r2.h + sp - 0.001);
       }
 
@@ -3139,13 +2917,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         var placed = false;
         var p = 0;
         var safetyCounter = 0;
-        var maxPageAttempts = placedInstances.length + 3; // batas aman: item yang muat selalu dapat tempat di halaman kosong berikutnya
-        if (placeInstSmart(inst, bounds, margin, spacing, pagesRects)) return; // [v24] penempatan pintar (putar otomatis + foto besar)
+        var maxPageAttempts = placedInstances.length + 3;
+        if (placeInstSmart(inst, bounds, margin, spacing, pagesRects)) return;
 
         while (!placed) {
           safetyCounter++;
           if (safetyCounter > maxPageAttempts) {
-            // upaya terakhir: taruh saja di halaman baru pada posisi margin, walau mungkin tumpang tindih
             inst.pageIndex = p;
             inst.leftMm = bounds.left + margin;
             inst.topMm = bounds.top + margin;
@@ -3201,9 +2978,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var pagesRects = [];
 
       function overlaps(r1, r2, sp) {
-        return !(r1.x + r1.w + sp <= r2.x + 0.001 || 
-                 r1.x >= r2.x + r2.w + sp - 0.001 || 
-                 r1.y + r1.h + sp <= r2.y + 0.001 || 
+        return !(r1.x + r1.w + sp <= r2.x + 0.001 ||
+                 r1.x >= r2.x + r2.w + sp - 0.001 ||
+                 r1.y + r1.h + sp <= r2.y + 0.001 ||
                  r1.y >= r2.y + r2.h + sp - 0.001);
       }
 
@@ -3230,8 +3007,8 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         var placed = false;
         var p = 0;
         var safetyCounter = 0;
-        var maxPageAttempts = placedInstances.length + 3; // batas aman: item yang muat selalu dapat tempat di halaman kosong berikutnya
-        if (placeInstSmart(inst, bounds, margin, spacing, pagesRects)) return; // [v24] penempatan pintar (putar otomatis + foto besar)
+        var maxPageAttempts = placedInstances.length + 3;
+        if (placeInstSmart(inst, bounds, margin, spacing, pagesRects)) return;
 
         while (!placed) {
           safetyCounter++;
@@ -3346,10 +3123,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       redrawCanvas();
     }
 
-    /* ===================== SINKRONISASI EDIT ANTAR FOTO DARI ITEM ANTREAN YANG SAMA =====================
-       Saat satu foto (instance) yang berasal dari item antrean yang sama diedit/disesuaikan/
-       diputar/dibalik/diberi garis, salinan foto lain dari item yang SAMA ikut mengikuti
-       perubahan itu secara otomatis. Foto dari item yang BERBEDA tetap independen. */
     function syncSiblingInstances(sourceInst, keys) {
       if (!sourceInst || !sourceInst.parentId) return;
       placedInstances.forEach(function(other) {
@@ -3363,9 +3136,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     }
 
-    /* Memutar vektor panX/panY mengikuti rotasi bingkai (kelipatan 90°) agar posisi
-       geser/crop yang sudah disesuaikan pengguna tetap terlihat sama persis, hanya
-       ikut berputar bersama bingkai — bukan bergeser/berubah posisi. */
     function rotatePanVector(panX, panY, deg) {
       var normDeg = ((deg % 360) + 360) % 360;
       switch (normDeg) {
@@ -3433,7 +3203,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         var maxRight = Math.max(...selectedInsts.map(function(i) { return i.leftMm + i.w; }));
         var minTop = Math.min(...selectedInsts.map(function(i) { return i.topMm; }));
         var maxBottom = Math.max(...selectedInsts.map(function(i) { return i.topMm + i.h; }));
-        
+
         var groupW = maxRight - minLeft;
         var groupH = maxBottom - minTop;
 
@@ -3561,7 +3331,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           var natW = inst.natW || 100;
           var natH = inst.natH || 100;
 
-          var baseRot = (inst.rotation || 0) + (inst.imgRot || 0);   // [v17] imgRot = putar gambar saja
+          var baseRot = (inst.rotation || 0) + (inst.imgRot || 0);
           var fineRot = inst.fineRotation || 0;
           var totalRot = baseRot + fineRot;
           var isRotated = (baseRot % 180 !== 0);
@@ -3582,7 +3352,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           var pxShiftX = (inst.panX || 0) * targetW;
           var pxShiftY = (inst.panY || 0) * targetH;
           var flipScale = inst.flipH ? 'scaleX(-1)' : '';
-          
+
           img.style.transform = 'translate(calc(-50% + ' + pxShiftX + 'px), calc(-50% + ' + pxShiftY + 'px)) scale(' + (inst.zoom || 1) + ') rotate(' + totalRot + 'deg) ' + flipScale;
 
           if (inst.adjust) {
@@ -3592,15 +3362,10 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           imgWrapper.appendChild(img);
           frame.appendChild(imgWrapper);
 
-          var shapeRadius = shapeCssRadius(inst, targetW, targetH);   // [v18] sudut membulat / oval
+          var shapeRadius = shapeCssRadius(inst, targetW, targetH);
           if (shapeRadius) { frame.style.borderRadius = shapeRadius; imgWrapper.style.borderRadius = shapeRadius; }
 
           if (inst.border && inst.border.enabled && inst.border.thickness > 0) {
-            // Ditaruh sebagai lapisan (overlay) TERPISAH yang ditambahkan SETELAH
-            // imgWrapper, supaya tergambar DI ATAS foto. Sebelumnya border ini
-            // dipasang sebagai box-shadow pada elemen frame itu sendiri, yang
-            // secara urutan render CSS tertutup oleh <img> foto di dalamnya
-            // (makanya sempat tidak kelihatan meskipun warna/ukuran diubah-ubah).
             var borderOverlay = document.createElement('div');
             borderOverlay.className = 'photo-border-overlay';
             borderOverlay.style.borderWidth = (inst.border.thickness * mmToPx) + 'px';
@@ -3627,7 +3392,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           frame.style.fontWeight = inst.isBold ? 'bold' : 'normal';
           frame.style.fontStyle = inst.isItalic ? 'italic' : 'normal';
           frame.style.textDecoration = inst.isUnderline ? 'underline' : 'none';
-          
+
           frame.style.display = 'flex';
           frame.style.alignItems = 'center';
           frame.style.justifyContent = 'center';
@@ -3636,7 +3401,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           textSpan.innerText = inst.text;
           textSpan.style.whiteSpace = 'nowrap';
           textSpan.style.transform = 'rotate(' + (inst.rotation || 0) + 'deg)';
-          
+
           frame.appendChild(textSpan);
         }
 
@@ -3653,7 +3418,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var isPointerDown = false;
       var startX, startY;
       var startPositions = [];
-      var snapThresholdMm = 1.8; 
+      var snapThresholdMm = 1.8;
       var dragThresholdPx = 5;
 
       frame.addEventListener('pointerdown', function(e) {
@@ -3678,12 +3443,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         if (!isDragging) {
           var initialDx = Math.abs(e.clientX - startX);
           var initialDy = Math.abs(e.clientY - startY);
-          
+
           if (initialDx > dragThresholdPx || initialDy > dragThresholdPx) {
             isDragging = true;
             saveState();
             frame.classList.add('dragging');
-            
+
             var currentInst = placedInstances[index];
             if (!selectedInstanceIds.includes(currentInst.instId)) {
               if (!isMultiSelectMode) {
@@ -3746,8 +3511,8 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         var isPaperCenterV = false;
         var isPaperCenterH = false;
 
-        var paperCenterX = 105; 
-        var paperCenterY = 148.5; 
+        var paperCenterX = 105;
+        var paperCenterY = 148.5;
 
         if (Math.abs(groupBox.centerX - paperCenterX) < snapThresholdMm) {
           dx += (paperCenterX - groupBox.centerX);
@@ -3828,7 +3593,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
       function stopDrag(e) {
         isPointerDown = false;
-        
+
         if (!isDragging) {
           if (e.type === 'pointerup') {
             var currentInst = placedInstances[index];
@@ -3862,7 +3627,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         if (targetCanvas) {
           var targetPageIdx = parseInt(targetCanvas.id.replace('a4-canvas-p', ''));
           var draggedInst = placedInstances[index];
-          
+
           if (draggedInst.pageIndex !== targetPageIdx) {
             var originCanvas = frame.parentElement;
             var originRect = originCanvas.getBoundingClientRect();
@@ -3907,9 +3672,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       frame.addEventListener('pointercancel', stopDrag);
     }
 
-    function updateModalZoom() { 
-      tempZoom = parseFloat(document.getElementById('cropZoomSlider').value); 
-      renderCropImageTransform(); 
+    function updateModalZoom() {
+      tempZoom = parseFloat(document.getElementById('cropZoomSlider').value);
+      renderCropImageTransform();
     }
 
     function updateModalRotation() {
@@ -3932,10 +3697,10 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (activeInstanceIndex === null) return;
       saveState();
       var targetInst = placedInstances[activeInstanceIndex];
-      targetInst.zoom = tempZoom; 
-      targetInst.panX = tempPanX; 
-      targetInst.panY = tempPanY; 
-      targetInst.fineRotation = tempFineRotation; 
+      targetInst.zoom = tempZoom;
+      targetInst.panX = tempPanX;
+      targetInst.panY = tempPanY;
+      targetInst.fineRotation = tempFineRotation;
       targetInst.imgRot = (typeof window.getEditImgRot === 'function') ? window.getEditImgRot() : (targetInst.imgRot || 0);
       if (typeof window.getEditShape === 'function') { var shp = window.getEditShape(); targetInst.cornerRadius = shp.r; targetInst.oval = shp.o; }
       syncSiblingInstances(targetInst, ['zoom', 'panX', 'panY', 'fineRotation', 'imgRot', 'cornerRadius', 'oval']);
@@ -3945,11 +3710,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       redrawCanvas();
     }
 
-    /* Undo/Redo di dalam modal Edit Foto — pakai riwayat yang sama dengan Undo/Redo
-       utama (supaya tetap satu riwayat, tidak dobel), tapi setelah undo/redo tampilan
-       di dalam modal (preview foto, slider zoom/rotasi, swatch warna) ikut disegarkan
-       supaya sesuai dengan kondisi foto yang aktif saat itu. */
-    /* [v17] Buka editor foto lewat tombol toolbar (alternatif klik 2×) */
     function editSelectedPhoto() {
       var idx = -1;
       for (var i = 0; i < selectedInstanceIds.length && idx < 0; i++) {
@@ -3971,7 +3731,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       refreshCropModalAfterHistoryChange();
     }
 
-    /* ===================== ICON DROPDOWN HEADER (PROYEK & EKSPOR, GAYA PHOTOSHOP) ===================== */
     function toggleDropdown(id) {
       var menu = document.getElementById(id);
       var wasOpen = menu.classList.contains('show');
@@ -3989,14 +3748,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       handleExport();
     }
 
-    /* ===================== FITUR SESUAIKAN (Suhu, Rona, Kecerahan, Kontras, Sorotan, Saturasi, Ketajaman) ===================== */
     var tempAdjust = { temperature: 0, tint: 0, brightness: 0, contrast: 0, highlights: 0, saturation: 0, sharpness: 0 };
     var adjustTargetIds = [];
     var ADJUST_KEYS = ['temperature', 'tint', 'brightness', 'contrast', 'highlights', 'saturation', 'sharpness'];
 
     function capitalizeKey(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-    // Membangun string filter CSS/Canvas (kedua konteks mendukung syntax yang sama)
     function buildFilterString(adj) {
       adj = adj || {};
       var brightness = 1 + ((adj.brightness || 0) / 150);
@@ -4007,11 +3764,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       var tint = adj.tint || 0;
       var sepiaAmt = temp > 0 ? Math.min(0.45, (temp / 100) * 0.45) : 0;
       var hueDeg = (temp < 0 ? (temp / 100) * 25 : 0) + (tint / 100) * 20;
-      // Kalau semua nilai penyesuaian netral (foto belum diedit sama sekali),
-      // kembalikan 'none' apa adanya. Men-set ctx.filter ke string CSS filter
-      // (walau efeknya netral/tidak berubah) memaksa Chrome (terutama di Android)
-      // memakai jalur render berbeda untuk drawImage yang di-scale/rotasi besar,
-      // dan itu yang menyebabkan hasil ekspor JPG/PNG/PDF jadi bergaris-garis.
       var isNeutral = (brightness === 1 && contrast === 1 && saturate === 1 && sepiaAmt === 0 && hueDeg === 0);
       if (isNeutral) return 'none';
       return 'brightness(' + brightness.toFixed(3) + ') contrast(' + contrast.toFixed(3) + ') saturate(' + saturate.toFixed(3) + ') sepia(' + sepiaAmt.toFixed(3) + ') hue-rotate(' + hueDeg.toFixed(2) + 'deg)';
@@ -4081,10 +3833,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
     function closeAdjustModal() {
       document.getElementById('adjustModal').classList.remove('show');
-      redrawCanvas(); // batalkan pratinjau yang belum disimpan
+      redrawCanvas();
     }
 
-    /* ===================== FITUR GARIS PEMBATAS (PANDUAN POTONG) ===================== */
     var borderTargetIds = [];
     var tempBorder = { enabled: false, thickness: 1, color: '#000000' };
 
@@ -4169,13 +3920,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       redrawCanvas();
     }
 
-    /* ===================== HAPUS BACKGROUND (ONLINE, remove.bg) =====================
-       Pakai layanan online remove.bg lewat API Key milik pengguna sendiri — jadi
-       BUTUH INTERNET tiap kali dipakai. Paket gratis remove.bg: 50 foto/bulan per
-       API Key (bukan per hari); lebih dari itu mengikuti tarif berbayar di akun
-       remove.bg masing-masing. API Key disimpan lokal di HP/laptop (localStorage)
-       dan hanya dikirim ke remove.bg, tidak ke server lain. Diakses dari dalam
-       modal Edit Foto (klik 2x foto), jadi jadi satu tempat dengan crop/zoom/rotasi. */
     var REMOVE_BG_API_URL = 'https://api.remove.bg/v1.0/removebg';
     var REMOVE_BG_KEY_STORAGE = 'layoutFotoRemoveBgApiKey';
     var lastUsedBgColor = '#FFFFFF';
@@ -4310,11 +4054,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       setRemoveBgStatus('Foto asli dikembalikan.');
     }
 
-    /* ===================== WARNA BACKGROUND UNTUK PAS FOTO =====================
-       Dipakai SETELAH background dihapus (transparan) — supaya tidak perlu panggil
-       remove.bg lagi tiap ganti warna, versi transparannya (bgTransparentSrc)
-       disimpan lalu dikomposit ulang di canvas (lokal, gratis, instan) tiap kali
-       user pilih warna baru. */
     function compositeTransparentWithColor(transparentSrc, hex, callback) {
       var img = new Image();
       img.onload = function() {
@@ -4369,7 +4108,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     }
 
-    /* ===================== PANDUAN KERTAS SISA (non-cetak) ===================== */
     function openScrapGuideModal() {
       document.getElementById('scrapGuideEnabled').checked = scrapGuide.enabled;
       document.getElementById('scrapGuideW').value = scrapGuide.wCm;
@@ -4410,12 +4148,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       scheduleAutoSave();
     }
 
-    // Menggambar/menghapus kotak panduan (kiri/kanan/bawah, terbuka di atas) di setiap
-    // halaman: selalu center horizontal & nempel tepi atas (mengikuti tarikan kertas
-    // printer center-feed). Elemennya cuma overlay layar (pointer-events:none),
-    // TIDAK pernah ikut proses ekspor PDF/JPG/PNG (fungsi ekspor menggambar dari
-    // data placedInstances, bukan dari DOM ini) dan disembunyikan saat window.print()
-    // lewat aturan @media print (.scrap-guide).
     function updateScrapGuideOverlay() {
       document.querySelectorAll('.a4-canvas').forEach(function(canvas) {
         var existing = canvas.querySelector('.scrap-guide');
@@ -4437,7 +4169,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     }
 
-    /* Penajaman gambar (unsharp mask sederhana) — dipakai saat ekspor PDF/JPG/PNG */
     function applySharpen(ctx, w, h, amount) {
       if (!amount || w < 3 || h < 3) return;
       var strength = Math.max(0, Math.min(1, amount / 100)) * 1.3;
@@ -4468,7 +4199,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
     }
 
-    /* [v18] Bentuk bingkai foto: sudut membulat (inst.cornerRadius 0-100, 100 = setengah sisi terpendek) atau oval (inst.oval) */
     function shapeActive(inst) { return !!(inst && (inst.oval || (inst.cornerRadius || 0) > 0)); }
     function shapeCssRadius(inst, wPx, hPx) {
       if (!shapeActive(inst)) return '';
@@ -4502,14 +4232,14 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, targetW, targetH);
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high'; // penghalusan terbaik saat foto diperbesar
+      ctx.imageSmoothingQuality = 'high';
       ctx.save();
       ctx.filter = buildFilterString(inst.adjust);
 
       var natW = img.naturalWidth || img.width || inst.natW || 100;
       var natH = img.naturalHeight || img.height || inst.natH || 100;
 
-      var baseRot = (inst.rotation || 0) + (inst.imgRot || 0);   // [v17] imgRot = putar gambar saja
+      var baseRot = (inst.rotation || 0) + (inst.imgRot || 0);
       var fineRot = inst.fineRotation || 0;
       var totalRot = baseRot + fineRot;
       var isRotated = (baseRot % 180 !== 0);
@@ -4535,7 +4265,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 
       ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
       ctx.restore();
-      ctx.restore();   // [v18] tutup clip bentuk
+      ctx.restore();
 
       if (inst.adjust && inst.adjust.sharpness) {
         applySharpen(ctx, targetW, targetH, inst.adjust.sharpness);
@@ -4613,16 +4343,16 @@ UJI YANG BELUM SEMPAT DILAKUKAN
               doc.setFont(pdfFont, style);
               doc.setFontSize(inst.fontSize);
               doc.setTextColor(inst.color);
-              
+
               var centerX = inst.leftMm + (inst.w / 2);
               var centerY = inst.topMm + (inst.h / 2);
-              
-              doc.text(inst.text, centerX, centerY, { 
-                align: 'center', 
-                baseline: 'middle', 
-                angle: -((inst.rotation || 0) + (inst.freeRot || 0)) 
+
+              doc.text(inst.text, centerX, centerY, {
+                align: 'center',
+                baseline: 'middle',
+                angle: -((inst.rotation || 0) + (inst.freeRot || 0))
               });
-              
+
               if (inst.isUnderline) {   // [STEP13] garis bawah ikut miring
                 var textWidth = doc.getTextWidth(inst.text);
                 var th = ((inst.rotation || 0) + (inst.freeRot || 0)) * Math.PI / 180;
@@ -4640,9 +4370,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
                 var targetH = inst.h * scaleFactor;
                 canvas.width = targetW;
                 canvas.height = targetH;
-                
+
                 drawPhotoToCanvas(ctx, img, inst, targetW, targetH);
-                
+
                 if (shapeActive(inst)) doc.addImage(canvas.toDataURL('image/png'), 'PNG', inst.leftMm, inst.topMm, inst.w, inst.h);
                 else doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', inst.leftMm, inst.topMm, inst.w, inst.h);
               }
@@ -4672,7 +4402,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           exportCanvas.width = pageW;
           exportCanvas.height = pageH;
           var ctx = exportCanvas.getContext('2d');
-          
+
           renderPageToCanvas(ctx, 0, pageW, pageH, scaleFactor, imgMap);
 
           var link = document.createElement('a');
@@ -4728,10 +4458,10 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           ctx.fillStyle = inst.color;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          
+
           var centerX = (inst.leftMm + inst.w / 2) * scaleFactor;
           var centerY = (inst.topMm + inst.h / 2) * scaleFactor;
-          
+
           ctx.save();
           ctx.translate(centerX, centerY);
           ctx.rotate(((inst.rotation || 0) + (inst.freeRot || 0)) * Math.PI / 180);
@@ -4756,7 +4486,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
             var targetH = inst.h * scaleFactor;
             itemCanvas.width = targetW;
             itemCanvas.height = targetH;
-            
+
             drawPhotoToCanvas(itemCtx, img, inst, targetW, targetH);
 
             ctx.drawImage(itemCanvas, inst.leftMm * scaleFactor, inst.topMm * scaleFactor);
@@ -4766,7 +4496,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
   </script>
   <script>
-  /* ===== Panel opsi bawah ala Canva: satu panel terbuka pada satu waktu ===== */
   (function() {
     var SHEETS = {
       add:    { el: 'sheetAdd',        btn: 'tool_add' },
@@ -4802,10 +4531,8 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
       refresh();
     };
-    // tombol "Selesai"/"Reset"/tutup di dalam panel juga mengubah status -> sinkronkan tanda aktif
     document.addEventListener('click', function() { setTimeout(refresh, 0); setTimeout(refresh, 250); });
 
-    // Preview otomatis menyesuaikan saat panel dibuka/ditutup atau layar diputar
     var cont = document.getElementById('pages-container');
     if (cont && window.ResizeObserver) {
       new ResizeObserver(function() { adjustCanvasScale(); }).observe(cont);
@@ -4815,7 +4542,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* ===== [STEP1] Tools muncul hanya saat ada foto/teks terseleksi (ala Canva) ===== */
   (function() {
     function hasSel() { return typeof selectedInstanceIds !== 'undefined' && selectedInstanceIds.length > 0; }
     function closeSelPanels() {
@@ -4848,10 +4574,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* ===== [v17] Petunjuk "Edit Foto": muncul 4 detik saat satu foto baru dipilih ===== */
   (function() {
     var hint = document.getElementById('editHint'), lastKey = '', timer = null;
-    var HINT_ENABLED = false; /* [v25] petunjuk mengambang dimatikan karena mengganggu; ubah ke true untuk menyalakan lagi */
+    var HINT_ENABLED = false;
     function check() {
       if (!hint || typeof selectedInstanceIds === 'undefined') return;
       if (!HINT_ENABLED) { hint.style.display = 'none'; return; }
@@ -4876,7 +4601,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* ===== [STEP3] Geser & Rata/Layer: hanya satu panel bawah terbuka pada satu waktu ===== */
   (function() {
     var PADS = [['nudgePad', 'btnToggleNudgePad'], ['alignPad', 'btnToggleAlignPad']];
     function padOpen(id) { var el = document.getElementById(id); return !!(el && el.classList.contains('show')); }
@@ -4896,7 +4620,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* ===== [STEP5] Petunjuk geser toolbar bawah (fade tepi + goyang sekali saat pertama dibuka) ===== */
   (function() {
     var st = document.getElementById('toolStrip');
     if (!st) return;
@@ -4919,7 +4642,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* ===== [STEP8] Layar lebar: panel "Tambah" terbuka otomatis saat aplikasi dibuka (sidebar kiri) ===== */
   (function() {
     document.addEventListener('DOMContentLoaded', function() {
       try {
@@ -4927,17 +4649,11 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         if (wide && typeof window.openToolSheet === 'function') window.openToolSheet('add');
       } catch (e) {}
     });
-    // Layar diputar / jendela diubah ukurannya: pastikan skala preview dihitung ulang
     window.addEventListener('resize', function() { setTimeout(function() { if (typeof adjustCanvasScale === 'function') adjustCanvasScale(); }, 150); });
   })();
   </script>
 
   <script>
-  /* ===== [STEP9a] Toolbar teks ala Canva =====
-     - Ketuk teks -> tombol "Teks" muncul di toolbar bawah; ketuk dua kali -> panel terbuka & kolom isi langsung fokus.
-     - Edit lewat toolbar hanya mengubah teks yang terseleksi (teks hasil gandakan tidak ikut berubah).
-     - Kotak teks otomatis pas dengan isi teks (diukur), jadi tidak ada area kosong yang menangkap sentuhan.
-     Semua fitur lama tidak diubah; ini hanya tambahan. */
   (function() {
     var PX_PER_MM = 3.7795, PT_MM = 0.3528;
     function $(id) { return document.getElementById(id); }
@@ -4953,7 +4669,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       return placedInstances.filter(function(i) { return i.type === 'text' && selectedInstanceIds.indexOf(i.instId) !== -1; });
     }
 
-    /* Teks hasil "Gandakan" lama berbagi satu item antrean; lepaskan supaya edit tidak ikut mengubah salinannya */
     function ensureOwnParent(inst) {
       var sib = placedInstances.filter(function(i) { return i.parentId === inst.parentId; });
       var parent = queueItems.find(function(q) { return q.id === inst.parentId; });
@@ -4972,19 +4687,19 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     function fitTextBox(inst, item) {
       if (!fitCtx) fitCtx = document.createElement('canvas').getContext('2d');
       fitCtx.font = (inst.isItalic ? 'italic ' : '') + (inst.isBold ? 'bold ' : '') + (inst.fontSize * 1.33) + 'px "' + inst.fontFamily + '"';
-      var tw = fitCtx.measureText(inst.text || ' ').width / PX_PER_MM + 2;     // mm (+1 mm kiri/kanan)
-      var th = inst.fontSize * PT_MM * 1.25 + 1;                               // mm
+      var tw = fitCtx.measureText(inst.text || ' ').width / PX_PER_MM + 2;
+      var th = inst.fontSize * PT_MM * 1.25 + 1;
       var r = (((inst.rotation || 0) % 360) + 360) % 360;
       var w = (r % 180 === 90) ? th : tw;
       var h = (r % 180 === 90) ? tw : th;
-      var cx = inst.leftMm + inst.w / 2, cy = inst.topMm + inst.h / 2;         // pusat tetap di tempat
+      var cx = inst.leftMm + inst.w / 2, cy = inst.topMm + inst.h / 2;
       inst.w = w; inst.h = h;
       inst.leftMm = Math.max(0, Math.min(210 - w, cx - w / 2));
       inst.topMm = Math.max(0, Math.min(297 - h, cy - h / 2));
       if (item) { item.wCm = tw / 10; item.hCm = th / 10; }
     }
 
-    window.__txApi = { fitTextBox: fitTextBox, ensureOwnParent: ensureOwnParent };   // [STEP13]
+    window.__txApi = { fitTextBox: fitTextBox, ensureOwnParent: ensureOwnParent };
     function applyProp(field, val, histKey) {
       var list = selectedTexts();
       if (!list.length) return;
@@ -5004,7 +4719,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       applyProp(field, !list[0][field], field + '_t' + Date.now());
     }
 
-    /* ---------- sinkron isi panel dengan teks terseleksi ---------- */
     function refresh() {
       var list = selectedTexts();
       document.body.classList.toggle('has-text-sel', list.length > 0);
@@ -5035,10 +4749,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       new MutationObserver(function() { setTimeout(refresh, 0); }).observe(cont, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
     }
 
-    /* ---------- kontrol panel ---------- */
     $('txInput').addEventListener('input', function() {
       var v = this.value;
-      if (!v.trim()) return;                    // kosong diabaikan; isi lama tetap dipakai
+      if (!v.trim()) return;
       applyProp('text', v, 'text');
     });
     $('txInput').addEventListener('blur', function() { setTimeout(refresh, 0); });
@@ -5061,7 +4774,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     $('txItalic').addEventListener('click', function() { toggleProp('isItalic'); });
     $('txUnderline').addEventListener('click', function() { toggleProp('isUnderline'); });
 
-    /* Gandakan teks: salinan mandiri (item antrean sendiri) */
     $('txDup').addEventListener('click', function() {
       var list = selectedTexts();
       if (!list.length) return;
@@ -5088,7 +4800,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       redrawCanvas();
     });
 
-    /* ---------- teks baru: pas ukurannya, terseleksi, panel Teks terbuka ---------- */
     document.addEventListener('DOMContentLoaded', function() {
       var addBtn = $('btnAddText');
       if (!addBtn) return;
@@ -5107,7 +4818,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
     });
 
-    /* ---------- ketuk dua kali pada teks: buka panel & fokus ke kolom isi ---------- */
     var lastTap = { id: null, t: 0, x: 0, y: 0 };
     if (cont) cont.addEventListener('pointerup', function(e) {
       if (typeof isScrollMode !== 'undefined' && isScrollMode) return;
@@ -5127,7 +4837,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
     });
 
-    /* ---------- edit lewat tabel Antrean: kotak teks ikut dipas ---------- */
     var origUpdate = window.updateTextProperty;
     if (typeof origUpdate === 'function') {
       window.updateTextProperty = function(id, field, val) {
@@ -5138,7 +4847,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         placedInstances.forEach(function(inst) {
           if (inst.parentId !== id || inst.type !== 'text') return;
           var c = centers[inst.instId];
-          if (c) { inst.leftMm = c[0] - inst.w / 2; inst.topMm = c[1] - inst.h / 2; }   // pertahankan pusat lama
+          if (c) { inst.leftMm = c[0] - inst.w / 2; inst.topMm = c[1] - inst.h / 2; }
           fitTextBox(inst, item);
         });
         redrawCanvas();
@@ -5149,27 +4858,22 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* ===== [STEP10] Tambahan PC: Ctrl+scroll zoom, Delete hapus, panah geser, drag teks kecil dengan mouse =====
-     Semua tambahan; fungsi lama tidak diubah. Pintasan keyboard tidak aktif saat mengetik di kolom isian,
-     saat modal Edit Foto terbuka, atau saat layar kunci lisensi tampil. */
   (function() {
     function $(id) { return document.getElementById(id); }
 
-    /* ---------- Ctrl/Cmd + scroll = zoom tampilan (juga cubit trackpad di laptop) ---------- */
     var zf = null;
     var ws = $('workspace');
     if (ws) ws.addEventListener('wheel', function(e) {
-      if (!(e.ctrlKey || e.metaKey)) return;                       // scroll biasa tetap menggulung halaman
+      if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
       if (typeof setViewZoom !== 'function') return;
-      if (zf === null || Math.round(zf) !== viewZoomPercent) zf = viewZoomPercent;   // ikut slider/pinch kalau berubah
+      if (zf === null || Math.round(zf) !== viewZoomPercent) zf = viewZoomPercent;
       var dy = e.deltaY * (e.deltaMode === 1 ? 33 : 1);
       dy = Math.max(-120, Math.min(120, dy));
-      zf = Math.max(MIN_VIEW_ZOOM, Math.min(MAX_VIEW_ZOOM, zf * Math.exp(-dy * 0.002)));   // [v16] zoom proporsional, rentang lebar
+      zf = Math.max(MIN_VIEW_ZOOM, Math.min(MAX_VIEW_ZOOM, zf * Math.exp(-dy * 0.002)));
       setViewZoom(zf, { x: e.clientX, y: e.clientY });
     }, { passive: false });
 
-    /* ---------- Delete / Backspace menghapus; panah menggeser (Shift = 10x lebih jauh) ---------- */
     function isTyping(t) {
       if (!t || !t.tagName) return false;
       var n = t.tagName.toUpperCase();
@@ -5177,15 +4881,15 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
     function blocked() {
       var cm = $('cropModal');
-      if (cm && cm.style.display && cm.style.display !== 'none') return true;      // modal Edit Foto terbuka
+      if (cm && cm.style.display && cm.style.display !== 'none') return true;
       var lo = $('licenseOverlay');
-      if (lo && lo.style.display && lo.style.display !== 'none') return true;      // layar kunci lisensi
+      if (lo && lo.style.display && lo.style.display !== 'none') return true;
       return false;
     }
     var lastMoveT = 0;
     function moveByKey(dx, dy) {
       var n = Date.now();
-      if (n - lastMoveT > 700) saveState();                        // satu langkah Undo untuk satu rangkaian tekan panah
+      if (n - lastMoveT > 700) saveState();
       lastMoveT = n;
       selectedInstanceIds.forEach(function(id) {
         var inst = placedInstances.find(function(i) { return i.instId === id; });
@@ -5196,7 +4900,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       redrawCanvas();
     }
     document.addEventListener('keydown', function(e) {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;              // Ctrl+Z / Ctrl+Y tetap ditangani handler lama
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (isTyping(e.target) || blocked()) return;
       if (typeof selectedInstanceIds === 'undefined' || selectedInstanceIds.length === 0) return;
       var k = e.key;
@@ -5211,10 +4915,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       }
     });
 
-    /* ---------- Teks kecil di PC: drag dengan mouse tidak lepas saat pointer keluar dari kotak ---------- */
     var cont = $('pages-container');
     if (cont) cont.addEventListener('pointerdown', function(e) {
-      if (e.pointerType === 'touch' || e.button !== 0) return;     // layar sentuh sudah otomatis menangkap pointer
+      if (e.pointerType === 'touch' || e.button !== 0) return;
       var fr = e.target && e.target.closest ? e.target.closest('.text-frame') : null;
       if (fr) { try { fr.setPointerCapture(e.pointerId); } catch (err) {} }
     }, true);
@@ -5222,7 +4925,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <style>
-  /* [STEP12] Peringatan autosave gagal */
+
   #saveFailBar{display:none;position:fixed;top:0;left:0;right:0;z-index:3000;background:#c0392b;color:#fff;font-size:12px;line-height:1.35;padding:6px 10px;padding-top:calc(6px + env(safe-area-inset-top,0px));align-items:center;gap:8px}
   #saveFailBar.show{display:flex}
   #saveFailBar span{flex:1}
@@ -5230,8 +4933,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </style>
   <div id="saveFailBar"><span>⚠️ Penyimpanan otomatis GAGAL (memori browser penuh). Perubahan terbaru belum aman. Simpan proyek ke file sekarang.</span><button type="button" id="saveFailBtn">Simpan Proyek</button><button type="button" id="saveFailX" title="Tutup">✕</button></div>
   <script>
-  /* [STEP12] Autosave: kegagalan tidak lagi diam-diam. persistTabs sekarang mengembalikan true/false,
-     indikator "tersimpan" tidak muncul saat gagal, dan pita peringatan tampil sampai simpan berhasil lagi. */
   (function(){
     var bar = document.getElementById('saveFailBar'), failed = false, dismissedAt = 0;
     function setFailed(f){
@@ -5254,13 +4955,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     window.showAutoSaveIndicator = function(){ if (!failed) origIndicator.apply(this, arguments); };
     document.getElementById('saveFailBtn').onclick = function(){ try { exportProjectFile(); } catch (e) { alert('Gagal membuat file proyek.'); } };
     document.getElementById('saveFailX').onclick = function(){ dismissedAt = Date.now(); bar.classList.remove('show'); };
-    // jika ditutup tapi masih gagal, tampilkan lagi setelah 60 detik
     setInterval(function(){ if (failed && dismissedAt && Date.now() - dismissedAt > 60000) { dismissedAt = 0; bar.classList.add('show'); } }, 5000);
   })();
   </script>
 
   <style>
-  /* [STEP13] Gagang teks: tarik pojok = ukuran font, bulatan atas = putar bebas */
+
   .tx-h{position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #007bff;box-sizing:border-box;touch-action:none;z-index:6;cursor:nwse-resize}
   .tx-h.tl{left:-12px;top:-12px}.tx-h.tr{right:-12px;top:-12px;cursor:nesw-resize}
   .tx-h.bl{left:-12px;bottom:-12px;cursor:nesw-resize}.tx-h.br{right:-12px;bottom:-12px}
@@ -5272,8 +4972,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   .tx-lbl{position:absolute;left:50%;transform:translateX(-50%);top:-62px;background:#222;color:#fff;font-size:11px;padding:2px 6px;border-radius:5px;white-space:nowrap;pointer-events:none;display:none;z-index:7}
   </style>
   <script>
-  /* [STEP13] 9b. Rotasi bebas disimpan di inst.freeRot (derajat, searah jarum jam), TERPISAH dari inst.rotation
-     (kelipatan 90, mengatur tukar w/h). Total sudut = rotation + freeRot. Preview memutar frame lewat CSS. */
   (function(){
     var api = window.__txApi;
     function modalOpen(){ var m = document.getElementById('cropModal'); return m && m.style.display && m.style.display !== 'none'; }
@@ -5326,10 +5024,9 @@ UJI YANG BELUM SEMPAT DILAKUKAN
           lbl.textContent = fs + ' pt'; lbl.style.display = 'block';
         }, function(){ lbl.style.display = 'none'; renderQueueTable(); redrawCanvas(); });
       });
-      // dekat tepi atas halaman gagang putar dipindah ke bawah kotak supaya tidak terpotong
       var cxm = inst.leftMm + inst.w / 2, cym = inst.topMm + inst.h / 2, dist = inst.h / 2 + 11, fr = inst.freeRot || 0;
       function room(deg){ var a = deg * Math.PI / 180, x = cxm + Math.cos(a) * dist, y = cym + Math.sin(a) * dist; return Math.min(x, y, 210 - x, 297 - y); }
-      var below = room(fr + 90) > room(fr - 90);   // pilih sisi yang masih di dalam halaman
+      var below = room(fr + 90) > room(fr - 90);
       var stem = document.createElement('div'); stem.className = 'tx-stem' + (below ? ' b' : ''); f.appendChild(stem);
       if (below) lbl.classList.add('b');
       var r = addHandle(f, 'rot' + (below ? ' b' : ''));
@@ -5361,16 +5058,13 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   </script>
 
   <script>
-  /* [STEP15] Editor Foto Fokus (pengganti total modal Edit Foto lama + STEP11 + STEP14).
-     Markup & CSS-nya statis (#cropModal). Kode hapus background/warna lama dipakai ulang lewat id yang sama
-     (cropImgTarget, removeBgStatus, btnRemoveBgRun, bgColorSwatchBox, bgCustomColorModal). */
   (function(){
     var modal = document.getElementById('cropModal'), stage = document.getElementById('focusStage');
     var vb = document.getElementById('cropViewBox'), main = document.getElementById('cropImgTarget');
     var ghost = document.getElementById('focusGhost'), more = document.getElementById('focusMore'), bg = document.getElementById('focusBg');
     var snap = null;
-    var tempRadius = 0, tempOval = false;   // [v18] bentuk bingkai selama editor terbuka
-    var tempImgRot = 0;   // [v17] putaran gambar (kelipatan 90°) selama editor terbuka; baru disimpan saat Selesai
+    var tempRadius = 0, tempOval = false;
+    var tempImgRot = 0;
     function curInst(){ return activeInstanceIndex === null ? null : placedInstances[activeInstanceIndex]; }
     function isOpen(){ return !!modal.style.display && modal.style.display !== 'none'; }
     function fit(inst){
@@ -5389,7 +5083,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     function clamp(inst){
       var g = geom(inst), z = tempZoom || 1;
       var rw = (g.rot ? g.dh : g.dw) * z, rh = (g.rot ? g.dw : g.dh) * z;
-      var mx = Math.abs(rw - g.w) / (2 * g.w), my = Math.abs(rh - g.h) / (2 * g.h);   // [v16] saat foto lebih kecil dari bingkai: geser tetap di dalam bingkai
+      var mx = Math.abs(rw - g.w) / (2 * g.w), my = Math.abs(rh - g.h) / (2 * g.h);
       tempPanX = Math.max(-mx, Math.min(mx, tempPanX)); tempPanY = Math.max(-my, Math.min(my, tempPanY));
     }
     window.renderCropImageTransform = function(){
@@ -5401,7 +5095,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       vb.style.borderRadius = tempOval ? '50%' : (tempRadius > 0 ? (tempRadius / 100 * Math.min(g.w, g.h) / 2) + 'px' : '');
     };
     function render(){ window.renderCropImageTransform(); }
-    /* [v16] Zoom terkecil = seluruh foto kelihatan utuh di dalam bingkai (mode "Muat"). Contoh: logo 3:1 di bingkai kotak -> 0.33x */
     function minZoomFor(inst){
       var g = geom(inst);
       var rw1 = g.rot ? g.dh : g.dw, rh1 = g.rot ? g.dw : g.dh;
@@ -5439,7 +5132,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
     function close(){ modal.style.display = 'none'; activeInstanceIndex = null; snap = null; }
 
-    // foto asli diganti oleh fungsi hapus background/warna (mereka mengisi #cropImgTarget.src): samakan bayangan redup
     new MutationObserver(function(){ ghost.src = main.src; render(); }).observe(main, {attributes: true, attributeFilter: ['src']});
     main.addEventListener('load', render);
 
@@ -5464,9 +5156,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       if (inst && snap) ['zoom','panX','panY','fineRotation'].forEach(function(k){ if (snap[k] === undefined) delete inst[k]; else inst[k] = snap[k]; });
       close(); redrawCanvas();
     };
-    /* [v17] Putar Gambar: HANYA gambarnya yang berputar 90°, bingkai/ukuran potongan tetap.
-       Rotasi seluruh bingkai tetap lewat tombol "Putar" di toolbar bawah. */
-    /* [v18] Tab editor + kontrol bentuk */
     function syncShapeUI(){
       var sl = document.getElementById('feRadiusSlider'), tx = document.getElementById('feRadiusText');
       if (!sl) return;
@@ -5517,7 +5206,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     };
     more.onclick = function(){ var o = bg.classList.toggle('open'); more.textContent = '🧼 Lainnya: Hapus Background & Warna ' + (o ? '▴' : '▾'); };
 
-    // geser (1 jari/mouse) dan cubit (2 jari) di seluruh area gelap; scroll mouse = zoom
     var ptrs = {}, pinch0 = null;
     function setZoom(z){
       var inst = curInst();
@@ -5554,7 +5242,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   })();
   </script>
 
-<!-- ===== [v21] ASISTEN AI PERINTAH — tambahan murni, tidak mengubah fitur lama ===== -->
 <style>
 #aiPanel{display:none;position:fixed;left:8px;right:8px;bottom:120px;z-index:9001;max-height:60vh;overflow:auto;background:#1f2330;color:#eee;border-radius:14px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);font-size:13px}
 #aiPanel.show{display:block}
@@ -5575,8 +5262,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 <div id="aiToast"></div>
 <script>
 (function(){
-  var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-2.5-flash','gemini-flash-latest','gemini-2.5-flash-lite','gemini-flash-lite-latest'] /* [v28] */, plan=null, GK='', GM=MODELS, GR=2;
-  /* [v27] SYS diperpendek: hanya aksi inti cetak. Aksi lain tetap bisa lewat tombol manual di aplikasi. */
+  var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-2.5-flash','gemini-flash-latest','gemini-2.5-flash-lite','gemini-flash-lite-latest'] , plan=null, GK='', GM=MODELS, GR=2;
   var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Target "t": "semua" (semua foto), nomor foto (1,2,..) atau daftar [1,3], "teks" (semua teks), "objek" (foto+teks). Default t="semua". Aksi: '+
   '{"a":"sisa_kertas","aktif":bool,"w":cm,"h":cm} {"a":"jarak","n":0-10} {"a":"margin","n":0-30} {"a":"ukuran","t":..,"w":cm,"h":cm} {"a":"jumlah","t":..,"n":1-200} {"a":"rapikan"} {"a":"hapus","t":..} {"a":"putar","t":..,"deg":90|-90|180} '+
   '{"a":"hapus_bg","t":..,"hex":"#hex"} = hapus background via remove.bg (pakai kuota, 1x per foto, hex=warna latar pengganti opsional, default putih; JANGAN tambah warna_bg lagi kalau hex sudah diisi) {"a":"warna_bg","t":..,"hex":"#hex"} = ganti warna latar foto yang background-nya sudah dihapus '+
@@ -5589,7 +5275,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   function photos(){return queueItems.filter(function(q){return q.type==='photo';});}
   function texts(){return queueItems.filter(function(q){return q.type==='text';});}
   function getKey(){try{return localStorage.getItem(KEY)||'';}catch(e){return '';}}
-  function askKey(){var k=prompt('Tempel API Key Gemini (disimpan di browser perangkat ini saja):',getKey());if(k!==null){try{localStorage.setItem(KEY,k.trim());}catch(e){}}}
   function num(v,lo,hi){v=parseFloat(v);return isNaN(v)?null:Math.min(hi,Math.max(lo,v));}
   function hex(v){return /^#[0-9a-fA-F]{6}$/.test(v||'')?v:null;}
   function ids(t){return Array.isArray(t)?t:[t];}
@@ -5663,7 +5348,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   }
   function setSlider(id,v){var e=$(id);e.value=v;e.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('change'));}
   function photoInsts(t){return T(t).filter(function(i){return i.type==='photo';});}
-  /* [v26] hapus_bg: hapus background lewat remove.bg, satu kali per foto di antrean (salinan ikut tersinkron). */
   function bgFirstInst(q){return placedInstances.filter(function(i){return i.parentId===q.id&&i.type==='photo';})[0];}
   function bgTodo(t){return Q(t).filter(function(q){var i=bgFirstInst(q);return i&&!i.bgTransparentSrc;});}
   function bgErr(e){
@@ -5746,7 +5430,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       processTextAdd();var q=queueItems[queueItems.length-1];
       if(s.isi)updateTextProperty(q.id,'text',s.isi);if(s.ukuran)updateTextProperty(q.id,'fontSize',s.ukuran);
       if(s.warna)updateTextProperty(q.id,'color',s.warna);if(s.tebal)updateTextProperty(q.id,'isBold',true);
-      
+
     }
     else if(a==='teks_ubah'){
       L=texts();if(s.no!=='semua')L=L.slice(parseInt(s.no,10)-1,parseInt(s.no,10));
@@ -5810,7 +5494,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     else if(a==='cetak'){$('btnPrint').click();}
     else if(a==='export'){runExport(s.fmt);}
   }
-  /* [v28] gcall diperkuat: mode berpikir dimatikan, model cadangan lebih banyak, coba ulang berjeda, batas waktu 20 dtk, kode error tampil. */
   function gcall(obj,i,n,noThink,last){
     i=i||0;n=n||0;
     var ctl=(typeof AbortController!=='undefined')?new AbortController():null,tm=null,timedOut=false;
@@ -5846,8 +5529,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       teks:texts().map(function(q,i){return {no:i+1,isi:q.text};}),sisa_kertas:scrapGuide,jarak:$('spacingSlider').value,margin:$('marginSlider').value,putar_otomatis:!!($('chkAutoRotate')&&$('chkAutoRotate').checked)});
   }
 
-  /* [v30] BANYAK PENYEDIA AI: daftar berurutan, gagal -> otomatis pindah ke berikutnya.
-     tipe 'gemini' = Google Gemini; tipe 'openai' = semua yang kompatibel OpenAI (Groq, OpenRouter, Mistral, dll) dengan URL + model sendiri. */
   var PKEY='layoutFotoAiProvidersV1',MAXP=8;
   var PRESETS={
     gemini:{nama:'Gemini',tipe:'gemini',model:'',url:''},
@@ -6033,8 +5714,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   $('aiClose').onclick=closePanel;
   $('aiKeyLink').onclick=function(e){e.preventDefault();openMgr();};
 
-  /* [v29] Tautan pindah pengaturan: API key Gemini + remove.bg + Ukuran Saya ikut ke perangkat lain.
-     Data ditaruh di bagian #pindah=... pada alamat (bagian # tidak dikirim ke server). Dibuka di perangkat tujuan -> konfirmasi -> masuk. */
   function b64e(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
   function b64d(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';return JSON.parse(decodeURIComponent(escape(atob(t))));}
   function buildMoveLink(){
@@ -6073,7 +5752,6 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     }
     toast('Pengaturan masuk ✔'+(jml?' ('+add+' ukuran baru)':''));
   }
-  /* jalan setelah loadCustomSizes() (listener DOMContentLoaded milik STEP6 terdaftar lebih dulu) */
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',importMove);else importMove();
   $('aiSend').onclick=send;
   $('aiClear').onclick=function(){$('aiCmd').value='';show('');$('aiCmd').focus();};
