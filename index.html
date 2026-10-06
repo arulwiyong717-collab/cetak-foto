@@ -8,7 +8,7 @@ Pemilik: Aula (bahasa Indonesia, jawab dan beri label UI dalam bahasa Indonesia)
 
 ATURAN KERJA DARI PEMILIK
 1. Fitur yang SUDAH ADA tidak boleh diubah perilakunya. Hanya mengganti/menambah fitur yang disepakati bersama.
-2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v31]. Versi terakhir: v31.
+2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v31]. Versi terakhir: v32.
 3. Pemilik sering memberi perintah lewat suara/ketikan yang berantakan; tafsirkan maksudnya, tanyakan hanya jika benar-benar ambigu.
 4. Selalu serahkan file index.html utuh di akhir, dan perbarui catatan ini.
 
@@ -21,6 +21,16 @@ PETA FITUR (semua di 1 file)
 - Asisten AI Perintah ([v21], tombol ✨ AI, blok script paling bawah): Gemini menerjemahkan perintah jadi JSON langkah,
   lalu run(s) menjalankannya. Daftar aksi ada di konstanta SYS + fungsi clean() + desc() + run(). Tiga tempat ini
   HARUS selalu diubah bersamaan kalau menambah aksi baru.
+
+YANG DIKERJAKAN DI v32 (Preset Susunan, tahap 1: foto saja)
+- Tombol baru "Preset" (📐) di bar bawah, setelah "Tata Letak"; lembar #sheetPreset didaftarkan di objek SHEETS. Kode ada di blok script tepat sebelum blok AI paling bawah (window.PresetUI, window.PresetAPI).
+- Simpan susunan sekarang: memotret semua foto di halaman 1 menjadi slot (x, y, w, h, putaran dalam mm) + margin, jarak, Sisa Kertas. Fotonya dan hasil edit TIDAK ikut. Nama wajib. Disimpan di localStorage kunci layoutFotoPresetV1 (maks 20).
+- Pasang preset: saveState() dulu (bisa Undo), lalu foto antrean dipindah ke slot; edit foto (zoom, bentuk, filter, garis) tidak disentuh, pan di-reset hanya bila putaran berubah. Teks tidak disentuh.
+- Cara mengisi: "Ulangi foto sampai penuh" (instance digandakan, qty antrean ikut dihitung ulang) atau "Satu foto, satu slot" (sisa slot kosong). Foto lebih banyak dari slot membuat halaman baru dengan pola sama.
+- Foto landscape di slot potret (atau sebaliknya) diputar 90 derajat bila kotak "Putar otomatis" di Tata Letak aktif; kalau nonaktif, pakai putaran slot yang tersimpan.
+- Pindah Pengaturan membawa daftar preset (kolom pr); di tujuan ditambahkan, nama atau susunan yang sama dilewati.
+- Aksi AI (SYS/clean/desc/run) tidak diubah. Belum ada perintah AI untuk preset. Tahap 2 yang direncanakan: teks, bentuk, garis ikut preset.
+- Belum dites di browser sungguhan oleh pemilik; hanya cek sintaks dan uji simulasi.
 
 YANG DIKERJAKAN DI v31 (bersih-bersih, tanpa mengubah perilaku)
 - Dibuang: semua komentar di dalam kode (JS 146, CSS 30, HTML 6), fungsi askKey (tak terpakai), satu variabel sisa, dan 15 aturan CSS yatim (header-bar, controls, floating-drag-handle, dll).
@@ -931,6 +941,11 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         <button type="button" class="btn btn-reset" style="margin-top:8px; width:100%; padding:9px;" onclick="autoArrangeAllWithHistory()">🪄 Rapikan Multi-Halaman</button>
         <p style="font-size: 10px; color: #555; margin: 8px 0 0 0;">*Setel skala printer ke <b>100%</b> atau <b>Default</b>. Simpan file .json proyek agar bisa dilanjutkan nanti (menu 📁 di atas).</p>
       </section>
+      <section class="sheet" id="sheetPreset">
+        <div class="sheet-head"><b>📐 Preset Susunan</b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
+        <div id="presetList" class="pr-list"></div>
+        <div id="presetDetail"></div>
+      </section>
   <div id="adjustModal" class="floating-modal">
     <div id="adjustModalHeader" class="floating-modal-header">
       <h3>🎚️ Sesuaikan Foto</h3>
@@ -1103,6 +1118,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       <button type="button" class="tool-btn" id="tool_add" onclick="openToolSheet('add')"><span class="ti">➕</span><span class="tl">Tambah</span></button>
       <button type="button" class="tool-btn" id="tool_queue" onclick="openToolSheet('queue')"><span class="ti">📋</span><span class="tl">Antrean</span></button>
       <button type="button" class="tool-btn" id="tool_layout" onclick="openToolSheet('layout')"><span class="ti">🧩</span><span class="tl">Tata Letak</span></button>
+      <button type="button" class="tool-btn" id="tool_preset" title="Preset Susunan" onclick="openToolSheet('preset')"><span class="ti">📐</span><span class="tl">Preset</span></button>
       <button type="button" class="tool-btn needs-text" id="tool_text" title="Pengaturan Teks" onclick="openToolSheet('text')"><span class="ti">🔤</span><span class="tl">Teks</span></button>
       <button type="button" class="tool-btn needs-sel" id="tool_editphoto" title="Edit Foto (sama dengan klik 2×): crop, zoom, geser, putar gambar, hapus background" onclick="editSelectedPhoto()"><span class="ti">✏️</span><span class="tl">Edit Foto</span></button>
       <button type="button" class="tool-btn needs-sel" id="tool_adjust" title="Sesuaikan Foto" onclick="openToolSheet('adjust')"><span class="ti">🎚️</span><span class="tl">Sesuaikan</span></button>
@@ -4501,6 +4517,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       add:    { el: 'sheetAdd',        btn: 'tool_add' },
       queue:  { el: 'sheetQueue',      btn: 'tool_queue' },
       layout: { el: 'sheetLayout',     btn: 'tool_layout' },
+      preset: { el: 'sheetPreset',     btn: 'tool_preset',    open: function() { window.PresetUI.open(); } },
       text:   { el: 'sheetText',       btn: 'tool_text' },
       adjust: { el: 'adjustModal',     btn: 'tool_adjust',    open: function() { openAdjustModal(); },     close: function() { closeAdjustModal(); } },
       border: { el: 'borderModal',     btn: 'tool_border',    open: function() { openBorderModal(); },     close: function() { closeBorderModal(); } },
@@ -5260,7 +5277,281 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   <div id="aiPlan"></div>
 </div>
 <div id="aiToast"></div>
-<script>
+  <style>
+    #sheetPreset .pr-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #sheetPreset .pr-card { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1.5px solid #dee2e6; border-radius: 10px; background: #fff; cursor: pointer; text-align: left; font-size: 12px; min-height: 54px; }
+    #sheetPreset .pr-card.sel { border-color: #5b21d6; background: #f3eeff; }
+    #sheetPreset .pr-card.pr-new { border-style: dashed; color: #5b21d6; font-weight: 600; justify-content: center; }
+    #sheetPreset .pr-card b { display: block; font-size: 12px; line-height: 1.2; word-break: break-word; }
+    #sheetPreset .pr-card small { color: #6c757d; font-size: 10.5px; }
+    #sheetPreset .pr-thumb { width: 30px; flex: 0 0 30px; }
+    .pr-svg { display: block; width: 100%; height: auto; }
+    #sheetPreset .pr-detail { margin-top: 10px; display: flex; gap: 10px; align-items: flex-start; }
+    #sheetPreset .pr-prev { width: 96px; flex: 0 0 96px; }
+    #sheetPreset .pr-ctl { flex: 1; min-width: 0; font-size: 12px; }
+    #sheetPreset .pr-mode { display: block; width: 100%; margin-top: 6px; padding: 8px; border: 1.5px solid #dee2e6; border-radius: 8px; background: #fff; font-size: 12px; text-align: left; cursor: pointer; }
+    #sheetPreset .pr-mode.on { border-color: #5b21d6; background: #ede7ff; color: #5b21d6; font-weight: 600; }
+    #sheetPreset .pr-note { margin: 8px 0 0 0; font-size: 11px; color: #495057; }
+    #sheetPreset .pr-empty { grid-column: 1 / -1; font-size: 11px; color: #6c757d; margin: 0; }
+    #sheetPreset .pr-del { margin-top: 6px; background: none; border: none; color: #d63031; font-size: 11px; cursor: pointer; padding: 4px 0; }
+    #presetSaveOverlay { display: none; position: fixed; inset: 0; z-index: 6000; background: rgba(0,0,0,.45); align-items: center; justify-content: center; padding: 14px; }
+    #presetSaveOverlay.show { display: flex; }
+    #presetSaveOverlay .pr-box { background: #fff; color: #212529; border-radius: 14px; width: 100%; max-width: 380px; max-height: 92vh; overflow: auto; padding: 14px; box-sizing: border-box; font-size: 13px; }
+    #presetSaveOverlay .pr-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    #presetSaveOverlay .pr-top { display: flex; gap: 12px; align-items: flex-start; }
+    #presetSaveOverlay .pr-top .pr-prev { width: 84px; flex: 0 0 84px; }
+    #presetSaveOverlay input[type=text] { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1.5px solid #ced4da; border-radius: 8px; font-size: 14px; margin-top: 4px; }
+    #presetSaveOverlay .pr-warn { color: #d63031; font-size: 11px; min-height: 14px; margin-top: 3px; }
+    #presetSaveOverlay ul { list-style: none; padding: 0; margin: 6px 0 10px 0; font-size: 12px; }
+    #presetSaveOverlay li { padding: 2px 0; }
+    #presetSaveOverlay .pr-btns { display: flex; gap: 8px; }
+    #presetToast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; z-index: 6500; background: rgba(33,37,41,.94); color: #fff; font-size: 12px; padding: 8px 14px; border-radius: 18px; display: none; max-width: 90vw; text-align: center; }
+  </style>
+  <script>
+  (function() {
+    var KEY = 'layoutFotoPresetV1', MAXP = 20, COL = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
+    var selId = null, mode = 'repeat', draft = null, tHandle = null;
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function r2(n) { return Math.round(Number(n) * 100) / 100; }
+    function newId() { return 'ps_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4); }
+    function say(t) {
+      var e = $('presetToast');
+      if (!e) { e = document.createElement('div'); e.id = 'presetToast'; document.body.appendChild(e); }
+      e.textContent = t; e.style.display = 'block';
+      clearTimeout(tHandle); tHandle = setTimeout(function() { e.style.display = 'none'; }, 3500);
+    }
+    function sanitize(p) {
+      if (!p || typeof p.nama !== 'string' || !Array.isArray(p.slots)) return null;
+      var slots = [];
+      p.slots.slice(0, 60).forEach(function(s) {
+        if (!s) return;
+        var o = { x: r2(s.x), y: r2(s.y), w: r2(s.w), h: r2(s.h), r: (((Number(s.r) || 0) % 360) + 360) % 360 };
+        if (isFinite(o.x) && isFinite(o.y) && o.w > 0 && o.h > 0) slots.push(o);
+      });
+      var nama = p.nama.trim().substr(0, 30);
+      if (!nama || !slots.length) return null;
+      var sc = p.scrap || {};
+      return {
+        id: typeof p.id === 'string' && p.id ? p.id : newId(), nama: nama,
+        paperW: Number(p.paperW) > 0 ? Number(p.paperW) : 210, paperH: Number(p.paperH) > 0 ? Number(p.paperH) : 297,
+        margin: isFinite(Number(p.margin)) ? Number(p.margin) : 5, spacing: isFinite(Number(p.spacing)) ? Number(p.spacing) : 2,
+        scrap: { enabled: !!sc.enabled, wCm: Number(sc.wCm) > 0 ? Number(sc.wCm) : 5, hCm: Number(sc.hCm) > 0 ? Number(sc.hCm) : 5 },
+        slots: slots
+      };
+    }
+    function load() {
+      try {
+        var a = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (!Array.isArray(a)) return [];
+        return a.map(sanitize).filter(function(x) { return x; });
+      } catch (e) { return []; }
+    }
+    function store(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) { say('Gagal menyimpan preset (penyimpanan penuh)'); } }
+    function sig(p) { return JSON.stringify([p.margin, p.spacing, p.slots.map(function(s) { return [s.x, s.y, s.w, s.h]; })]); }
+    function merge(arr) {
+      var cur = load(), added = 0;
+      if (!Array.isArray(arr)) return 0;
+      arr.forEach(function(r) {
+        var q = sanitize(r);
+        if (!q || cur.length >= MAXP) return;
+        if (cur.some(function(x) { return x.nama.toLowerCase() === q.nama.toLowerCase() || sig(x) === sig(q); })) return;
+        q.id = newId(); cur.push(q); added++;
+      });
+      if (added) store(cur);
+      return added;
+    }
+    function capture() {
+      var ph = placedInstances.filter(function(i) { return i.type === 'photo' && (i.pageIndex || 0) === 0; });
+      if (!ph.length) return null;
+      var slots = ph.map(function(i) {
+        return { x: r2(i.leftMm), y: r2(i.topMm), w: r2(i.w), h: r2(i.h), r: (((i.rotation || 0) % 360) + 360) % 360 };
+      });
+      slots.sort(function(a, b) { return Math.abs(a.y - b.y) > 1 ? a.y - b.y : a.x - b.x; });
+      return {
+        paperW: 210, paperH: 297,
+        margin: parseFloat($('marginSlider').value) || 0, spacing: parseFloat($('spacingSlider').value) || 0,
+        scrap: { enabled: !!scrapGuide.enabled, wCm: scrapGuide.wCm, hCm: scrapGuide.hCm },
+        slots: slots
+      };
+    }
+    function svg(p, labels, big) {
+      var W = p.paperW || 210, H = p.paperH || 297;
+      var o = '<svg class="pr-svg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg"><rect width="' + W + '" height="' + H + '" fill="#fff" stroke="#adb5bd" stroke-width="1.5"/>';
+      p.slots.forEach(function(s, i) {
+        var lab = labels ? labels[i] : i, empty = labels && (lab === null || lab === undefined);
+        var c = COL[(empty ? i : lab) % COL.length];
+        o += '<rect x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" ' + (empty ? 'fill="none" stroke-dasharray="3 2"' : 'fill="' + c + '22"') + ' stroke="' + c + '" stroke-width="1.2"/>';
+        if (big && !empty) o += '<text x="' + (s.x + s.w / 2) + '" y="' + (s.y + s.h / 2) + '" font-size="' + Math.max(6, Math.min(s.w, s.h) * 0.45) + '" text-anchor="middle" dominant-baseline="central" fill="' + c + '">' + (lab + 1) + '</text>';
+      });
+      return o + '</svg>';
+    }
+    function units() {
+      var out = [];
+      queueItems.forEach(function(q) {
+        if (q.type !== 'photo') return;
+        placedInstances.forEach(function(i) { if (i.type === 'photo' && i.parentId === q.id) out.push(i); });
+      });
+      return out;
+    }
+    function photoNo(parentId) {
+      var n = 0, idx = 0;
+      queueItems.forEach(function(q) { if (q.type === 'photo') { if (q.id === parentId) idx = n; n++; } });
+      return idx;
+    }
+    function plan(p, m) {
+      var u = units(), S = p.slots.length;
+      if (!u.length) return null;
+      var total = (m === 'repeat' && u.length < S) ? S : u.length;
+      var list = [];
+      for (var k = 0; k < total; k++) list.push({ src: u[k % u.length], clone: k >= u.length });
+      return { list: list, pages: Math.ceil(total / S), count: u.length, total: total };
+    }
+    function getSel() { var a = load(); for (var i = 0; i < a.length; i++) if (a[i].id === selId) return a[i]; return null; }
+    function render() {
+      var a = load(), box = $('presetList'), det = $('presetDetail');
+      if (!box || !det) return;
+      if (selId && !getSel()) selId = null;
+      var h = '';
+      a.forEach(function(p) {
+        h += '<button type="button" class="pr-card' + (p.id === selId ? ' sel' : '') + '" data-act="pick" data-id="' + esc(p.id) + '"><span class="pr-thumb">' + svg(p) + '</span><span><b>' + esc(p.nama) + '</b><small>' + p.slots.length + ' slot</small></span></button>';
+      });
+      h += '<button type="button" class="pr-card pr-new" data-act="new">＋ Simpan susunan sekarang</button>';
+      if (!a.length) h += '<p class="pr-empty">Belum ada preset. Rapikan foto di kertas sekali, lalu ketuk "Simpan susunan sekarang".</p>';
+      box.innerHTML = h;
+      var p = getSel();
+      if (!p) { det.innerHTML = ''; return; }
+      var pl = plan(p, mode), labels = null, info, ok = !!pl;
+      if (pl) {
+        labels = p.slots.map(function(s, i) { return i < pl.list.length ? photoNo(pl.list[i].src.parentId) : null; });
+        info = pl.count + ' foto, ' + p.slots.length + ' slot, ' + pl.pages + ' halaman. ' + (mode === 'repeat'
+          ? (pl.count >= p.slots.length ? 'Foto sudah cukup memenuhi slot, tidak ada yang diulang.' : 'Foto diulang bergiliran sampai semua slot terisi.')
+          : 'Satu foto satu slot, sisa slot dikosongkan.');
+      } else { info = 'Belum ada foto di antrean. Tambah foto dulu.'; }
+      det.innerHTML = '<div class="pr-detail"><div class="pr-prev">' + svg(p, labels || p.slots.map(function() { return null; }), true) + '</div><div class="pr-ctl"><b>Cara mengisi</b>' +
+        '<button type="button" class="pr-mode' + (mode === 'repeat' ? ' on' : '') + '" data-act="mode" data-m="repeat">Ulangi foto sampai penuh</button>' +
+        '<button type="button" class="pr-mode' + (mode === 'one' ? ' on' : '') + '" data-act="mode" data-m="one">Satu foto, satu slot</button>' +
+        '<p class="pr-note">' + esc(info) + '</p></div></div>' +
+        '<button type="button" class="btn btn-save" style="width:100%;margin-top:8px;padding:10px;" data-act="apply"' + (ok ? '' : ' disabled') + '>✓ Pasang preset ke kertas</button>' +
+        '<button type="button" class="pr-del" data-act="del">🗑 Hapus preset ini</button>';
+    }
+    function apply() {
+      var p = getSel();
+      if (!p) return;
+      var pl = plan(p, mode);
+      if (!pl) { say('Belum ada foto di antrean'); return; }
+      if (p.paperW !== 210 || p.paperH !== 297) {
+        if (!confirm('Preset ini dibuat di kertas ' + p.paperW + ' x ' + p.paperH + ' mm, kertas sekarang A4. Tetap pasang?')) return;
+      }
+      saveState();
+      var S = p.slots.length, auto = $('chkAutoRotate'), useAuto = !auto || auto.checked;
+      pl.list.forEach(function(e, k) {
+        var inst = e.src;
+        if (e.clone) {
+          inst = cloneItemsForHistory([e.src])[0];
+          inst.instId = 'inst_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+          placedInstances.push(inst);
+        }
+        var s = p.slots[k % S], oldRot = inst.rotation || 0, rot;
+        if (useAuto && Math.abs(s.w - s.h) > 1) {
+          var pw = inst.natW || 1, ph = inst.natH || 1;
+          if ((inst.imgRot || 0) % 180 !== 0) { var t = pw; pw = ph; ph = t; }
+          if (Math.abs(pw - ph) / Math.max(pw, ph) < 0.05) rot = 0;
+          else rot = ((pw > ph) !== (s.w > s.h)) ? 90 : 0;
+        } else { rot = s.r || 0; }
+        if (rot !== oldRot) { inst.panX = 0; inst.panY = 0; }
+        inst.rotation = rot;
+        inst.w = s.w; inst.h = s.h; inst.leftMm = s.x; inst.topMm = s.y;
+        inst.pageIndex = Math.floor(k / S);
+      });
+      queueItems.forEach(function(q) {
+        if (q.type !== 'photo') return;
+        q.qty = placedInstances.filter(function(i) { return i.type === 'photo' && i.parentId === q.id; }).length;
+      });
+      $('marginSlider').value = p.margin;
+      $('spacingSlider').value = p.spacing;
+      scrapGuide = { enabled: !!p.scrap.enabled, wCm: p.scrap.wCm, hCm: p.scrap.hCm };
+      if (typeof updateScrapGuideOverlay === 'function') updateScrapGuideOverlay();
+      selectedInstanceIds = [];
+      renderQueueTable();
+      redrawCanvas();
+      scheduleAutoSave();
+      closeAllSheets();
+      say('Preset "' + p.nama + '" terpasang (' + pl.pages + ' halaman). Bisa di-Undo.');
+    }
+    function ensureOverlay() {
+      var o = $('presetSaveOverlay');
+      if (o) return o;
+      o = document.createElement('div'); o.id = 'presetSaveOverlay';
+      o.innerHTML = '<div class="pr-box"><div class="pr-head"><b>Simpan susunan jadi preset</b><button type="button" class="sheet-close" data-act="cancel">✕</button></div>' +
+        '<div class="pr-top"><div class="pr-prev" id="prSavePrev"></div><div><b id="prSaveCount"></b><div id="prSaveInfo" style="font-size:11.5px;color:#495057;margin-top:3px"></div></div></div>' +
+        '<div style="margin-top:12px;font-size:12px;color:#495057">Nama preset</div>' +
+        '<input type="text" id="prSaveName" maxlength="30" placeholder="mis. 2 besar + 6 kecil"><div class="pr-warn" id="prSaveWarn"></div>' +
+        '<div style="font-size:12px;color:#495057">Yang ikut disimpan</div>' +
+        '<ul><li>✅ Posisi dan ukuran tiap slot</li><li>✅ Putaran tiap slot</li><li>✅ Ukuran kertas, margin, jarak, dan Sisa Kertas</li><li>❌ Fotonya dan hasil editnya tidak ikut</li></ul>' +
+        '<div class="pr-btns"><button type="button" class="btn btn-save" style="flex:1;padding:10px" data-act="ok">Simpan preset</button><button type="button" class="btn btn-reset" style="padding:10px 16px" data-act="cancel">Batal</button></div></div>';
+      document.body.appendChild(o);
+      o.addEventListener('click', function(e) {
+        if (e.target === o) { o.classList.remove('show'); return; }
+        var b = e.target.closest('[data-act]');
+        if (!b) return;
+        if (b.getAttribute('data-act') === 'cancel') o.classList.remove('show');
+        else if (b.getAttribute('data-act') === 'ok') commit();
+      });
+      return o;
+    }
+    function openSave() {
+      var cur = capture();
+      if (!cur) { say('Belum ada foto di halaman 1. Rapikan foto dulu.'); return; }
+      draft = cur;
+      var o = ensureOverlay();
+      $('prSavePrev').innerHTML = svg(cur, null, true);
+      $('prSaveCount').textContent = cur.slots.length + ' slot terdeteksi';
+      $('prSaveInfo').textContent = 'Kertas A4, margin ' + cur.margin + ' mm, jarak ' + cur.spacing + ' mm' + (cur.scrap.enabled ? ', Sisa Kertas ' + cur.scrap.wCm + ' x ' + cur.scrap.hCm + ' cm' : '') + '. Diambil dari susunan halaman 1 yang sekarang ada di kertas.';
+      $('prSaveName').value = ''; $('prSaveWarn').textContent = '';
+      o.classList.add('show');
+    }
+    function commit() {
+      var name = $('prSaveName').value.trim();
+      if (!name) { $('prSaveWarn').textContent = 'Nama preset belum diisi.'; $('prSaveName').focus(); return; }
+      var a = load(), same = -1;
+      a.forEach(function(p, i) { if (p.nama.toLowerCase() === name.toLowerCase()) same = i; });
+      if (same < 0 && a.length >= MAXP) { $('prSaveWarn').textContent = 'Maksimal ' + MAXP + ' preset. Hapus satu dulu.'; return; }
+      if (same >= 0 && !confirm('Preset bernama "' + a[same].nama + '" sudah ada. Ganti?')) return;
+      draft.nama = name;
+      var q = sanitize(draft);
+      if (!q) { $('prSaveWarn').textContent = 'Susunan tidak valid.'; return; }
+      if (same >= 0) { q.id = a[same].id; a[same] = q; } else a.push(q);
+      store(a);
+      selId = q.id;
+      $('presetSaveOverlay').classList.remove('show');
+      render();
+      say('Preset "' + name + '" tersimpan');
+    }
+    function bind() {
+      var sh = $('sheetPreset');
+      if (!sh) return;
+      sh.addEventListener('click', function(e) {
+        var b = e.target.closest('[data-act]');
+        if (!b) return;
+        var act = b.getAttribute('data-act');
+        if (act === 'pick') { selId = (selId === b.getAttribute('data-id')) ? null : b.getAttribute('data-id'); render(); }
+        else if (act === 'new') openSave();
+        else if (act === 'mode') { mode = b.getAttribute('data-m'); render(); }
+        else if (act === 'apply') apply();
+        else if (act === 'del') {
+          var p = getSel();
+          if (p && confirm('Hapus preset "' + p.nama + '"?')) { store(load().filter(function(x) { return x.id !== p.id; })); selId = null; render(); }
+        }
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+    window.PresetUI = { open: function() { render(); $('sheetPreset').classList.add('show'); } };
+    window.PresetAPI = { load: load, merge: merge };
+  })();
+  </script>
+
+  <script>
 (function(){
   var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-2.5-flash','gemini-flash-latest','gemini-2.5-flash-lite','gemini-flash-lite-latest'] , plan=null, GK='', GM=MODELS, GR=2;
   var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Target "t": "semua" (semua foto), nomor foto (1,2,..) atau daftar [1,3], "teks" (semua teks), "objek" (foto+teks). Default t="semua". Aksi: '+
@@ -5717,12 +6008,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   function b64e(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
   function b64d(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';return JSON.parse(decodeURIComponent(escape(atob(t))));}
   function buildMoveLink(){
-    var d={v:1,g:getKey(),p:loadProv().map(function(p){return {nama:p.nama,tipe:p.tipe,key:p.key,model:p.model,url:p.url,aktif:p.aktif};}),r:getRemoveBgApiKey(),u:customSizes.map(function(s){return [s.name||'',s.w,s.h];})};
+    var d={v:1,g:getKey(),p:loadProv().map(function(p){return {nama:p.nama,tipe:p.tipe,key:p.key,model:p.model,url:p.url,aktif:p.aktif};}),r:getRemoveBgApiKey(),u:customSizes.map(function(s){return [s.name||'',s.w,s.h];}),pr:(window.PresetAPI?window.PresetAPI.load():[])};
     return location.href.split('#')[0]+'#pindah='+b64e(d);
   }
   $('aiMoveLink').onclick=function(e){
     e.preventDefault();
-    if(!loadProv().length&&!getRemoveBgApiKey()&&!customSizes.length){toast('Belum ada pengaturan untuk disalin');return;}
+    if(!loadProv().length&&!getRemoveBgApiKey()&&!customSizes.length&&!(window.PresetAPI&&window.PresetAPI.load().length)){toast('Belum ada pengaturan untuk disalin');return;}
     var link=buildMoveLink();
     function ok(){toast('Tautan disalin. Kirim ke diri sendiri saja (berisi API key)');}
     if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(ok,function(){prompt('Salin tautan ini (berisi API key, jangan dibagikan):',link);});}
@@ -5733,8 +6024,8 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     var d=null;try{d=b64d(m[1]);}catch(e){}
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
     if(!d||d.v!==1){alert('Tautan pengaturan rusak atau tidak lengkap.');return;}
-    var jml=Array.isArray(d.u)?d.u.length:0;
-    if(!confirm('Tautan pengaturan terdeteksi.\n\nMasukkan ke perangkat ini?\n'+(Array.isArray(d.p)&&d.p.length?'• '+d.p.length+' penyedia AI (ditambahkan ke daftar)\n':(d.g?'• API Key Gemini\n':''))+(d.r?'• API Key remove.bg\n':'')+(jml?'• '+jml+' Ukuran Saya (ukuran yang sudah ada tidak diganda)\n':'')))return;
+    var jml=Array.isArray(d.u)?d.u.length:0;var npr=Array.isArray(d.pr)?d.pr.length:0;
+    if(!confirm('Tautan pengaturan terdeteksi.\n\nMasukkan ke perangkat ini?\n'+(Array.isArray(d.p)&&d.p.length?'• '+d.p.length+' penyedia AI (ditambahkan ke daftar)\n':(d.g?'• API Key Gemini\n':''))+(d.r?'• API Key remove.bg\n':'')+(jml?'• '+jml+' Ukuran Saya (ukuran yang sudah ada tidak diganda)\n':'')+(npr?'• '+npr+' Preset Susunan (yang sudah ada tidak diganda)\n':'')))return;
     var cur=loadProv(),np=0;
     function addP(c){if(!c||!c.key||cur.length>=MAXP||cur.some(function(x){return x.tipe===c.tipe&&x.key===c.key;}))return;c.id=pid();cur.push(c);np++;}
     if(Array.isArray(d.p))d.p.forEach(function(r){addP(cleanProv(r));});
@@ -5750,7 +6041,8 @@ UJI YANG BELUM SEMPAT DILAKUKAN
       });
       persistCustomSizes();renderCustomSizes();
     }
-    toast('Pengaturan masuk ✔'+(jml?' ('+add+' ukuran baru)':''));
+    var addPr=npr&&window.PresetAPI?window.PresetAPI.merge(d.pr):0;
+    toast('Pengaturan masuk ✔'+(jml?' ('+add+' ukuran baru)':'')+(npr?' ('+addPr+' preset baru)':''));
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',importMove);else importMove();
   $('aiSend').onclick=send;
