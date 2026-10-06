@@ -714,6 +714,7 @@
   <header class="topbar app-chrome">
     <div class="tb-title">Layout Foto</div>
     <div class="tb-actions">
+      <button type="button" class="tb-btn" id="tool_notes" title="Catatan saya" style="opacity:0.7;font-size:14px" onclick="openToolSheet('notes')">📝</button>
       <button type="button" class="tb-btn" id="btnUndo" onclick="undo()" title="Undo (Ctrl+Z)" disabled>↶</button>
       <button type="button" class="tb-btn" id="btnRedo" onclick="redo()" title="Redo (Ctrl+Y)" disabled>↷</button>
         <div class="icon-dropdown">
@@ -849,7 +850,14 @@
         <input type="text" id="syncCode" placeholder="Tempel kode, atau buat baru" autocomplete="off">
         <div class="sy-row"><button type="button" class="btn btn-reset" id="syncGen">🎲 Buat kode baru</button><button type="button" class="btn btn-save" id="syncConnect">Simpan &amp; hubungkan</button></div>
         <div class="sy-row"><button type="button" class="btn btn-reset" id="syncNowBtn">🔄 Sinkron sekarang</button><button type="button" class="btn btn-reset" id="syncLinkBtn">🔗 Salin tautan sinkron</button><button type="button" class="btn btn-reset" id="syncOff">Putuskan</button></div>
-        <p class="sy-note">Yang disinkronkan: Preset Susunan, Ukuran Saya, API key AI dan remove.bg. Foto dan proyek tidak ikut. Rahasiakan kode dan tautan, karena berisi akses ke API key.</p>
+        <p class="sy-note">Yang disinkronkan: Preset Susunan, Ukuran Saya, Catatan Saya, API key AI dan remove.bg. Foto dan proyek tidak ikut. Rahasiakan kode dan tautan, karena berisi akses ke API key.</p>
+      </section>
+      <section class="sheet" id="sheetNotes">
+        <div class="sheet-head"><b>📝 Catatan Saya <small id="notesCount" style="font-weight:400;color:#6c757d"></small></b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
+        <div class="nt-add"><textarea id="notesInput" rows="2" maxlength="500" placeholder="Ada yang perlu diperbaiki atau ditambah? Tulis di sini…"></textarea><button type="button" class="btn btn-save" id="notesAdd" style="padding:10px 12px">Simpan</button></div>
+        <div class="nt-types"><button type="button" class="nt-chip on" data-k="p">🔧 Perbaikan</button><button type="button" class="nt-chip" data-k="f">✨ Fitur</button><button type="button" class="nt-chip" data-k="l">📌 Lain</button></div>
+        <div id="notesList" class="nt-list"></div>
+        <div class="nt-bar"><button type="button" class="nt-link" id="notesToggle"></button><button type="button" class="nt-link" id="notesCopy">📋 Salin daftar</button></div>
       </section>
   <div id="adjustModal" class="floating-modal">
     <div id="adjustModalHeader" class="floating-modal-header">
@@ -4425,6 +4433,7 @@
       layout: { el: 'sheetLayout',     btn: 'tool_layout' },
       preset: { el: 'sheetPreset',     btn: 'tool_preset',    open: function() { window.PresetUI.open(); } },
       sync:   { el: 'sheetSync',       btn: 'tool_sync',      open: function() { window.SyncUI.open(); } },
+      notes:  { el: 'sheetNotes',      btn: 'tool_notes',     open: function() { window.NotesUI.open(); } },
       text:   { el: 'sheetText',       btn: 'tool_text' },
       adjust: { el: 'adjustModal',     btn: 'tool_adjust',    open: function() { openAdjustModal(); },     close: function() { closeAdjustModal(); } },
       border: { el: 'borderModal',     btn: 'tool_border',    open: function() { openBorderModal(); },     close: function() { closeBorderModal(); } },
@@ -5478,7 +5487,7 @@
   (function() {
     var SYNC_API_URL = 'GANTI_DENGAN_URL_WEB_APP_SINKRON';
     var SK_URL = 'layoutFotoSyncUrlV1', SK_CODE = 'layoutFotoSyncCodeV1', SK_LAST = 'layoutFotoSyncLastV1';
-    var K = { sizes: 'layoutFotoCustomSizesV1', rbg: 'layoutFotoRemoveBgApiKey', prov: 'layoutFotoAiProvidersV1', gem: 'layoutFotoGeminiApiKey', pre: 'layoutFotoPresetV1' };
+    var K = { sizes: 'layoutFotoCustomSizesV1', rbg: 'layoutFotoRemoveBgApiKey', prov: 'layoutFotoAiProvidersV1', gem: 'layoutFotoGeminiApiKey', pre: 'layoutFotoPresetV1', not: 'layoutFotoCatatanV1' };
     var busy = false, dirtyTimer = null, st = 'off', stMsg = '', lastOk = 0, tHandle = null;
     function $(id) { return document.getElementById(id); }
     function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -5495,11 +5504,11 @@
     function code() { return lsGet(SK_CODE) || ''; }
     function ready() { return !!srvUrl() && code().length >= 10; }
     function snap() {
-      var p = pj(K.pre), s = pj(K.sizes), a = pj(K.prov);
-      return { p: Array.isArray(p) ? p : [], s: Array.isArray(s) ? s : [], a: Array.isArray(a) ? a : null, g: lsGet(K.gem) || '', r: lsGet(K.rbg) || '' };
+      var p = pj(K.pre), s = pj(K.sizes), a = pj(K.prov), n = pj(K.not);
+      return { n: Array.isArray(n) ? n : [], p: Array.isArray(p) ? p : [], s: Array.isArray(s) ? s : [], a: Array.isArray(a) ? a : null, g: lsGet(K.gem) || '', r: lsGet(K.rbg) || '' };
     }
     function hsh(o) { var s = JSON.stringify(o), h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return h + ':' + s.length; }
-    function isEmpty(L) { return !L.p.length && !L.s.length && !(L.a && L.a.length) && !L.g && !L.r; }
+    function isEmpty(L) { return !(L.n && L.n.length) && !L.p.length && !L.s.length && !(L.a && L.a.length) && !L.g && !L.r; }
     function uniq(list, keyf, max) {
       var seen = {}, out = [];
       list.forEach(function(x) {
@@ -5513,6 +5522,7 @@
     function merge(L, S) {
       S = S || {};
       return {
+        n: uniq((L.n || []).concat(S.n || []), function(x) { return x.id; }, 200),
         p: uniq((L.p || []).concat(S.p || []), function(x) { return String(x.nama || '').toLowerCase(); }, 20),
         s: uniq((L.s || []).concat(S.s || []), function(x) { return Math.round(x.w * 100) + 'x' + Math.round(x.h * 100); }, 30),
         a: (L.a || S.a) ? uniq((L.a || []).concat(S.a || []), function(x) { return x.tipe + '|' + x.key; }, 8) : null,
@@ -5520,6 +5530,8 @@
       };
     }
     function apply(d) {
+      if (Array.isArray(d.n)) lsSet(K.not, JSON.stringify(d.n));
+      try { if (window.NotesUI) window.NotesUI.refresh(); } catch (e) {}
       lsSet(K.pre, JSON.stringify(d.p || []));
       lsSet(K.sizes, JSON.stringify(d.s || []));
       if (Array.isArray(d.a)) {
@@ -5656,6 +5668,109 @@
         $('sheetSync').classList.add('show');
       },
       now: syncNow
+    };
+  })();
+  </script>
+
+    <style>
+    #sheetNotes .nt-add { display: flex; gap: 6px; align-items: flex-start; }
+    #sheetNotes textarea { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 9px; border: 1.5px solid #ced4da; border-radius: 8px; font-size: 13px; font-family: inherit; resize: none; }
+    #sheetNotes .nt-types { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+    #sheetNotes .nt-chip { padding: 5px 10px; border: 1.5px solid #dee2e6; border-radius: 14px; background: #fff; font-size: 11.5px; cursor: pointer; }
+    #sheetNotes .nt-chip.on { border-color: #5b21d6; background: #ede7ff; color: #5b21d6; font-weight: 600; }
+    #sheetNotes .nt-list { margin-top: 6px; }
+    #sheetNotes .nt-item { display: flex; gap: 8px; align-items: flex-start; padding: 7px 2px; border-bottom: 1px solid #eceff1; font-size: 13px; }
+    #sheetNotes .nt-item.done .nt-txt { text-decoration: line-through; color: #868e96; }
+    #sheetNotes .nt-item input[type=checkbox] { margin-top: 3px; flex: 0 0 auto; }
+    #sheetNotes .nt-txt { flex: 1; min-width: 0; word-break: break-word; white-space: pre-wrap; cursor: pointer; }
+    #sheetNotes .nt-meta { display: block; font-size: 10px; color: #868e96; margin-top: 2px; }
+    #sheetNotes .nt-x { background: none; border: none; color: #adb5bd; font-size: 14px; cursor: pointer; padding: 2px 4px; }
+    #sheetNotes .nt-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 8px; font-size: 11.5px; }
+    #sheetNotes .nt-link { background: none; border: none; color: #5b21d6; font-size: 11.5px; cursor: pointer; padding: 4px 2px; }
+    #sheetNotes .nt-empty { font-size: 11.5px; color: #6c757d; margin: 10px 0 0 0; }
+  </style>
+  <script>
+  (function() {
+    var KEY = 'layoutFotoCatatanV1', MAXN = 200, TYPE = { p: '🔧 Perbaikan', f: '✨ Fitur', l: '📌 Lain' };
+    var type = 'p', showAll = false, tHandle = null;
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function newId() { return 'n_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4); }
+    function say(t) {
+      var e = $('presetToast');
+      if (!e) { e = document.createElement('div'); e.id = 'presetToast'; document.body.appendChild(e); }
+      e.textContent = t; e.style.display = 'block';
+      clearTimeout(tHandle); tHandle = setTimeout(function() { e.style.display = 'none'; }, 3000);
+    }
+    function load() {
+      try {
+        var a = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (!Array.isArray(a)) return [];
+        return a.filter(function(n) { return n && typeof n.t === 'string' && n.t; });
+      } catch (e) { return []; }
+    }
+    function store(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) { say('Gagal menyimpan catatan (penyimpanan penuh)'); } }
+    function fmt(ms) {
+      var d = new Date(ms || Date.now());
+      return d.getDate() + '/' + (d.getMonth() + 1) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+    function render() {
+      var box = $('notesList');
+      if (!box) return;
+      var a = load(), open = a.filter(function(n) { return !n.d; }).length;
+      var list = (showAll ? a : a.filter(function(n) { return !n.d; })).slice().sort(function(x, y) { return (y.c || 0) - (x.c || 0); });
+      var h = '';
+      list.forEach(function(n) {
+        h += '<div class="nt-item' + (n.d ? ' done' : '') + '"><input type="checkbox" data-act="done" data-id="' + esc(n.id) + '"' + (n.d ? ' checked' : '') + '>' +
+          '<div class="nt-txt" data-act="edit" data-id="' + esc(n.id) + '">' + esc(n.t) + '<span class="nt-meta">' + (TYPE[n.k] || TYPE.l) + ' · ' + fmt(n.c) + '</span></div>' +
+          '<button type="button" class="nt-x" data-act="del" data-id="' + esc(n.id) + '" title="Hapus">✕</button></div>';
+      });
+      if (!list.length) h = '<p class="nt-empty">' + (a.length && !showAll ? 'Semua catatan sudah selesai 👍' : 'Belum ada catatan. Tulis di atas saat ada yang perlu diperbaiki atau ditambah.') + '</p>';
+      box.innerHTML = h;
+      $('notesCount').textContent = open ? '(' + open + ' belum selesai)' : '';
+      $('notesToggle').textContent = showAll ? 'Tampilkan yang belum selesai saja' : 'Tampilkan semua (' + a.length + ')';
+      var chips = document.querySelectorAll('#sheetNotes .nt-chip');
+      for (var i = 0; i < chips.length; i++) chips[i].classList.toggle('on', chips[i].getAttribute('data-k') === type);
+    }
+    function add() {
+      var ta = $('notesInput'), t = ta.value.trim();
+      if (!t) { ta.focus(); return; }
+      var a = load();
+      if (a.length >= MAXN) { say('Maksimal ' + MAXN + ' catatan. Hapus yang sudah selesai.'); return; }
+      a.push({ id: newId(), t: t.substr(0, 500), k: type, d: false, c: Date.now() });
+      store(a); ta.value = ''; render();
+    }
+    function copyAll() {
+      var a = load().filter(function(n) { return !n.d; }).sort(function(x, y) { return (x.c || 0) - (y.c || 0); });
+      if (!a.length) { say('Tidak ada catatan yang belum selesai'); return; }
+      var txt = 'Catatan perbaikan dan tambahan fitur Layout Foto:\n' + a.map(function(n, i) { return (i + 1) + '. [' + (TYPE[n.k] || TYPE.l).replace(/^\S+\s/, '') + '] ' + n.t; }).join('\n');
+      function ok() { say('Daftar disalin. Tempel ke AI atau WhatsApp'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function() { prompt('Salin daftar ini:', txt); });
+      else prompt('Salin daftar ini:', txt);
+    }
+    function bind() {
+      var sh = $('sheetNotes');
+      if (!sh) return;
+      $('notesAdd').onclick = add;
+      $('notesCopy').onclick = copyAll;
+      $('notesToggle').onclick = function() { showAll = !showAll; render(); };
+      $('notesInput').addEventListener('keydown', function(e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); add(); } });
+      sh.addEventListener('click', function(e) {
+        var b = e.target.closest('[data-act],[data-k]');
+        if (!b) return;
+        if (b.hasAttribute('data-k')) { type = b.getAttribute('data-k'); render(); return; }
+        var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), a = load(), n = null;
+        a.forEach(function(x) { if (x.id === id) n = x; });
+        if (!n) return;
+        if (act === 'done') { n.d = !n.d; store(a); render(); }
+        else if (act === 'del') { if (confirm('Hapus catatan ini?')) { store(a.filter(function(x) { return x.id !== id; })); render(); } }
+        else if (act === 'edit') { var t = prompt('Ubah catatan:', n.t); if (t !== null && t.trim()) { n.t = t.trim().substr(0, 500); store(a); render(); } }
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+    window.NotesUI = {
+      open: function() { render(); $('sheetNotes').classList.add('show'); },
+      refresh: function() { if ($('sheetNotes') && $('sheetNotes').classList.contains('show')) render(); }
     };
   })();
   </script>
