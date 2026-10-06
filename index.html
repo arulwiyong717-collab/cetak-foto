@@ -832,7 +832,7 @@
         <div class="sheet-head"><b>🧩 Tata Letak Halaman</b><button type="button" class="sheet-close" onclick="closeAllSheets()">✕</button></div>
         <div class="adjust-slider-row"><label>Jarak</label><input type="range" id="spacingSlider" min="0" max="10" value="2"></div>
         <div class="adjust-slider-row"><label>Margin</label><input type="range" id="marginSlider" min="0" max="30" value="5"></div>
-        <label style="display:block;margin-top:8px;font-size:12px"><input type="checkbox" id="chkAutoRotate" checked> 🔄 Putar otomatis saat Rapikan (isi ruang kosong)</label>
+        <label style="display:block;margin-top:8px;font-size:12px"><input type="checkbox" id="chkAutoRotate"> 🔄 Putar otomatis saat Rapikan (isi ruang kosong)</label>
         <button type="button" class="btn btn-reset" style="margin-top:8px; width:100%; padding:9px;" onclick="autoArrangeAllWithHistory()">🪄 Rapikan Multi-Halaman</button>
         <p style="font-size: 10px; color: #555; margin: 8px 0 0 0;">*Setel skala printer ke <b>100%</b> atau <b>Default</b>. Simpan file .json proyek agar bisa dilanjutkan nanti (menu 📁 di atas).</p>
       </section>
@@ -5438,6 +5438,11 @@
     function bind() {
       var sh = $('sheetPreset');
       if (!sh) return;
+      var ar = $('chkAutoRotate');
+      if (ar) {
+        try { ar.checked = localStorage.getItem('layoutFotoAutoRotateV1') === '1'; } catch (e) {}
+        ar.addEventListener('change', function() { try { localStorage.setItem('layoutFotoAutoRotateV1', ar.checked ? '1' : '0'); } catch (e) {} });
+      }
       sh.addEventListener('click', function(e) {
         var b = e.target.closest('[data-act]');
         if (!b) return;
