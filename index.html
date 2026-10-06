@@ -8,7 +8,7 @@ Pemilik: Aula (bahasa Indonesia, jawab dan beri label UI dalam bahasa Indonesia)
 
 ATURAN KERJA DARI PEMILIK
 1. Fitur yang SUDAH ADA tidak boleh diubah perilakunya. Hanya mengganti/menambah fitur yang disepakati bersama.
-2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v29]. Versi terakhir: v29.
+2. Perubahan dibuat sebagai tambahan (additive), beri tag versi di komentar, mis. [v30]. Versi terakhir: v30.
 3. Pemilik sering memberi perintah lewat suara/ketikan yang berantakan; tafsirkan maksudnya, tanyakan hanya jika benar-benar ambigu.
 4. Selalu serahkan file index.html utuh di akhir, dan perbarui catatan ini.
 
@@ -21,6 +21,16 @@ PETA FITUR (semua di 1 file)
 - Asisten AI Perintah ([v21], tombol ✨ AI, blok script paling bawah): Gemini menerjemahkan perintah jadi JSON langkah,
   lalu run(s) menjalankannya. Daftar aksi ada di konstanta SYS + fungsi clean() + desc() + run(). Tiga tempat ini
   HARUS selalu diubah bersamaan kalau menambah aksi baru.
+
+YANG DIKERJAKAN DI v30 (AI bisa diganti / banyak penyedia + cadangan otomatis)
+- Tautan "Atur API Key" di panel AI diganti "Atur AI": layar daftar penyedia AI (maks 8). Tiap penyedia: nama, jenis, API key, model, URL, aktif/nonaktif, urutan (▲▼), hapus.
+- Jenis: "Google Gemini" (cara lama, model otomatis kalau dikosongkan) atau "OpenAI-compatible" (Groq, OpenRouter, Mistral, dst: isi URL dasar + nama model; dipanggil ke {URL}/chat/completions).
+  Preset cepat: Gemini, Groq, OpenRouter, Mistral, Lainnya. Nama model preset bisa usang -> ubah sesuai dashboard penyedia.
+- askAI() mencoba penyedia aktif BERURUTAN; kalau satu gagal (sibuk/kuota/key salah/timeout) langsung pindah ke berikutnya; kalau semua gagal, tampil daftar sebab per penyedia.
+  Kalau masih ada cadangan, penyedia dicoba cepat (tanpa coba ulang panjang); penyedia terakhir tetap pakai coba ulang 2x.
+- Migrasi: key Gemini lama otomatis jadi penyedia no.1. KEY lama tetap disinkronkan dari penyedia Gemini pertama.
+- Tautan Pindah Pengaturan kini membawa seluruh daftar penyedia; di tujuan, penyedia DITAMBAHKAN (tidak menimpa, duplikat dilewati).
+- SYS/clean/desc/run tidak berubah. Belum dites di browser sungguhan. Catatan: sebagian penyedia mungkin menolak panggilan langsung dari browser (CORS) -> pesan error menjelaskan.
 
 YANG DIKERJAKAN DI v29 (langkah c: tautan pindah pengaturan)
 - Panel ✨ AI kini punya tautan "Salin Tautan Pengaturan" (di sebelah "Atur API Key"). Isinya API key Gemini, API key remove.bg, dan daftar Ukuran Saya,
@@ -5556,7 +5566,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 @media print{#aiPanel,#aiToast{display:none!important}}
 </style>
 <div id="aiPanel" class="app-chrome">
-  <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Asisten AI</b><span><a href="#" id="aiKeyLink" style="color:#9ec5fe;font-size:11px">Atur API Key</a> &nbsp;<a href="#" id="aiMoveLink" style="color:#9ec5fe;font-size:11px">Salin Tautan Pengaturan</a> &nbsp;<button id="aiClose" type="button" style="background:#444;color:#fff;padding:2px 8px">✕</button></span></div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Asisten AI</b><span><a href="#" id="aiKeyLink" style="color:#9ec5fe;font-size:11px">Atur AI</a> &nbsp;<a href="#" id="aiMoveLink" style="color:#9ec5fe;font-size:11px">Salin Tautan Pengaturan</a> &nbsp;<button id="aiClose" type="button" style="background:#444;color:#fff;padding:2px 8px">✕</button></span></div>
   <div id="aiList" style="margin-bottom:6px;font-size:12px"></div>
   <textarea id="aiCmd" placeholder="Contoh: foto 1 ukuran 3x4 sebanyak 2, foto 2 ukuran 4x6 sebanyak 3, rapikan"></textarea>
   <div style="margin-top:6px;display:flex;gap:6px"><button id="aiSend" type="button" style="background:#6d28d9;color:#fff">Kirim</button><button id="aiClear" type="button" style="background:#444;color:#fff">Hapus teks</button></div>
@@ -5565,7 +5575,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
 <div id="aiToast"></div>
 <script>
 (function(){
-  var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-2.5-flash','gemini-flash-latest','gemini-2.5-flash-lite','gemini-flash-lite-latest'] /* [v28] */, plan=null;
+  var KEY='layoutFotoGeminiApiKey', MODELS=['gemini-2.5-flash','gemini-flash-latest','gemini-2.5-flash-lite','gemini-flash-lite-latest'] /* [v28] */, plan=null, GK='', GM=MODELS, GR=2;
   /* [v27] SYS diperpendek: hanya aksi inti cetak. Aksi lain tetap bisa lewat tombol manual di aplikasi. */
   var SYS='Kamu penerjemah perintah untuk aplikasi layout cetak foto. Balas HANYA JSON: {"ringkas":"kalimat singkat","langkah":[...]}. Target "t": "semua" (semua foto), nomor foto (1,2,..) atau daftar [1,3], "teks" (semua teks), "objek" (foto+teks). Default t="semua". Aksi: '+
   '{"a":"sisa_kertas","aktif":bool,"w":cm,"h":cm} {"a":"jarak","n":0-10} {"a":"margin","n":0-30} {"a":"ukuran","t":..,"w":cm,"h":cm} {"a":"jumlah","t":..,"n":1-200} {"a":"rapikan"} {"a":"hapus","t":..} {"a":"putar","t":..,"deg":90|-90|180} '+
@@ -5809,15 +5819,15 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     if(ctl)tm=setTimeout(function(){timedOut=true;ctl.abort();},20000);
     function next(st,why){
       var rec=(st===503||st===500||st===0);
-      if(rec&&n<2){show('Server AI sibuk ('+(st||'timeout')+'), coba lagi '+(n+1)+'/2…');return new Promise(function(r){setTimeout(r,2000*(n+1));}).then(function(){return gcall(obj,i,n+1,noThink,st);});}
-      if(i<MODELS.length-1){show('Ganti ke model cadangan ('+(st||'timeout')+')…');return gcall(obj,i+1,0,false,st);}
+      if(rec&&n<GR){show('Server AI sibuk ('+(st||'timeout')+'), coba lagi '+(n+1)+'/'+GR+'…');return new Promise(function(r){setTimeout(r,2000*(n+1));}).then(function(){return gcall(obj,i,n+1,noThink,st);});}
+      if(i<GM.length-1){show('Ganti ke model cadangan ('+(st||'timeout')+')…');return gcall(obj,i+1,0,false,st);}
       var e;
       if(st===429)e=new Error('Kuota API key Gemini habis (kode 429). Tunggu beberapa menit atau pakai key baru.');
       else if(st===0)e=new Error('Server Gemini tidak merespons (timeout). Cek internet lalu coba lagi.');
       else e=new Error('Server Gemini sedang penuh (kode '+st+'). Coba lagi 1-2 menit lagi.');
       e.busy=true;throw e;
     }
-    return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS[i]+':generateContent',{method:'POST',signal:ctl?ctl.signal:undefined,headers:{'Content-Type':'application/json','x-goog-api-key':getKey()},body:JSON.stringify(o)})
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GM[i]+':generateContent',{method:'POST',signal:ctl?ctl.signal:undefined,headers:{'Content-Type':'application/json','x-goog-api-key':GK},body:JSON.stringify(o)})
     .then(function(r){clearTimeout(tm);return r.json().catch(function(){return {error:{message:'respons tidak terbaca'}};}).then(function(d){return {st:r.status,d:d};});},
       function(err){clearTimeout(tm);if(timedOut||(err&&err.name==='AbortError'))return {st:0,d:{error:{message:'timeout'}}};throw err;})
     .then(function(x){
@@ -5835,15 +5845,149 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     return JSON.stringify({foto:photos().map(function(q,i){var ins=placedInstances.filter(function(x){return x.parentId===q.id;})[0]||{};return {no:i+1,ukuran:q.wCm+'x'+q.hCm,jumlah:q.qty,bg_sudah_dihapus:!!ins.bgTransparentSrc};}),
       teks:texts().map(function(q,i){return {no:i+1,isi:q.text};}),sisa_kertas:scrapGuide,jarak:$('spacingSlider').value,margin:$('marginSlider').value,putar_otomatis:!!($('chkAutoRotate')&&$('chkAutoRotate').checked)});
   }
+
+  /* [v30] BANYAK PENYEDIA AI: daftar berurutan, gagal -> otomatis pindah ke berikutnya.
+     tipe 'gemini' = Google Gemini; tipe 'openai' = semua yang kompatibel OpenAI (Groq, OpenRouter, Mistral, dll) dengan URL + model sendiri. */
+  var PKEY='layoutFotoAiProvidersV1',MAXP=8;
+  var PRESETS={
+    gemini:{nama:'Gemini',tipe:'gemini',model:'',url:''},
+    groq:{nama:'Groq',tipe:'openai',model:'llama-3.3-70b-versatile',url:'https://api.groq.com/openai/v1'},
+    openrouter:{nama:'OpenRouter',tipe:'openai',model:'meta-llama/llama-3.3-70b-instruct:free',url:'https://openrouter.ai/api/v1'},
+    mistral:{nama:'Mistral',tipe:'openai',model:'mistral-small-latest',url:'https://api.mistral.ai/v1'},
+    lain:{nama:'Lainnya',tipe:'openai',model:'',url:''}
+  };
+  function pid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).substr(2,3);}
+  function cleanProv(r){
+    if(!r||typeof r!=='object')return null;
+    return {id:String(r.id||pid()),nama:(String(r.nama||'').trim().substr(0,24))||'AI',tipe:r.tipe==='gemini'?'gemini':'openai',key:String(r.key||'').trim(),model:String(r.model||'').trim(),url:String(r.url||'').trim(),aktif:r.aktif!==false};
+  }
+  function loadProv(){
+    var a=null;try{a=JSON.parse(localStorage.getItem(PKEY)||'null');}catch(e){}
+    if(Array.isArray(a))return a.map(cleanProv).filter(Boolean).slice(0,MAXP);
+    var k=getKey();return k?[cleanProv({nama:'Gemini',tipe:'gemini',key:k})]:[];
+  }
+  function saveProv(a){
+    try{localStorage.setItem(PKEY,JSON.stringify(a));}catch(e){}
+    var g=a.filter(function(p){return p.tipe==='gemini'&&p.key;})[0];
+    try{localStorage.setItem(KEY,g?g.key:'');}catch(e){}
+  }
+  function provOk(p){return p.aktif&&p.key&&(p.tipe==='gemini'||(p.url&&p.model));}
+  function activeProv(){return loadProv().filter(provOk);}
+  function pjson(t){
+    t=String(t||'').replace(/<think>[\s\S]*?<\/think>/g,'');
+    var a=t.indexOf('{'),b=t.lastIndexOf('}');
+    if(a<0||b<a)throw new Error('Jawaban AI bukan JSON');
+    return JSON.parse(t.slice(a,b+1));
+  }
+  function ocall(p,text,noJson,n){
+    n=n||0;
+    var ctl=(typeof AbortController!=='undefined')?new AbortController():null,tm=null,timedOut=false;
+    if(ctl)tm=setTimeout(function(){timedOut=true;ctl.abort();},20000);
+    var u=p.url.replace(/\/+$/,'');if(!/\/chat\/completions$/.test(u))u+='/chat/completions';
+    var body={model:p.model,temperature:0,messages:[{role:'system',content:SYS},{role:'user',content:text}]};
+    if(!noJson)body.response_format={type:'json_object'};
+    return fetch(u,{method:'POST',signal:ctl?ctl.signal:undefined,headers:{'Content-Type':'application/json','Authorization':'Bearer '+p.key},body:JSON.stringify(body)})
+    .then(function(r){clearTimeout(tm);return r.json().catch(function(){return {};}).then(function(d){return {st:r.status,d:d};});},
+      function(err){clearTimeout(tm);return {st:(timedOut||(err&&err.name==='AbortError'))?0:-1,d:{}};})
+    .then(function(x){
+      var st=x.st,d=x.d||{};
+      if(st>=200&&st<300){var c=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;if(c)return c;throw new Error('Jawaban kosong');}
+      var msg=d.error&&(d.error.message||d.error);
+      if(st===400&&!noJson)return ocall(p,text,true,n);
+      if((st===503||st===500||st===0)&&n<GR){
+        show('Server '+esc(p.nama)+' sibuk ('+(st||'timeout')+'), coba lagi '+(n+1)+'/'+GR+'…');
+        return new Promise(function(r){setTimeout(r,2000*(n+1));}).then(function(){return ocall(p,text,noJson,n+1);});
+      }
+      if(st===-1)throw new Error('tidak bisa terhubung (cek internet, alamat URL, atau penyedia ini tidak mengizinkan akses dari browser)');
+      if(st===0)throw new Error('tidak merespons (timeout)');
+      if(st===429)throw new Error('kuota habis (kode 429)');
+      if(st===401||st===403)throw new Error('API Key salah (kode '+st+')');
+      if(st===404)throw new Error('model/alamat tidak ditemukan (kode 404), cek nama model dan URL');
+      throw new Error('gagal (kode '+st+')'+(typeof msg==='string'&&msg?': '+msg.substr(0,80):''));
+    });
+  }
+  function askAI(text){
+    var L=activeProv(),fails=[],i=0;
+    if(!L.length)return Promise.reject(new Error('Belum ada AI yang diatur'));
+    function tryNext(){
+      if(i>=L.length){var e=new Error((L.length>1?'Semua AI gagal:\n':'')+fails.join('\n'));e.busy=true;throw e;}
+      var p=L[i++],more=i<L.length,job;
+      GR=more?0:2;
+      if(p.tipe==='gemini'){
+        GK=p.key;GM=p.model?[p.model]:(more?MODELS.slice(0,2):MODELS);
+        job=gcall({systemInstruction:{parts:[{text:SYS}]},contents:[{role:'user',parts:[{text:text}]}],generationConfig:{responseMimeType:'application/json',temperature:0}})
+          .then(function(d){return d.candidates[0].content.parts[0].text;});
+      }else job=ocall(p,text,false,0);
+      return job.catch(function(e){
+        fails.push('• '+p.nama+': '+((e&&e.message)||'gagal'));
+        if(more)show('⚠ '+esc(p.nama)+' gagal, pindah ke '+esc(L[i].nama)+'…');
+        return tryNext();
+      });
+    }
+    return tryNext();
+  }
+  function openMgr(){
+    var old=$('aiMgr');if(old)old.parentNode.removeChild(old);
+    var W=loadProv(),ov=document.createElement('div');ov.id='aiMgr';
+    ov.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;z-index:9200;background:rgba(0,0,0,.7);overflow:auto;padding:10px;box-sizing:border-box';
+    document.body.appendChild(ov);
+    var A=escHtmlAttr,IN='width:100%;box-sizing:border-box;border-radius:6px;border:1px solid #444;background:#0c0e14;color:#fff;padding:6px;font-size:13px;margin-top:4px';
+    function card(p,i){
+      var o=p.tipe==='openai';
+      return '<div style="background:#1f2330;border-radius:10px;padding:10px;margin-bottom:8px">'+
+        '<div style="display:flex;gap:4px;align-items:center"><b>'+(i+1)+'.</b><input data-i="'+i+'" data-f="nama" value="'+A(p.nama)+'" style="'+IN+';margin:0;flex:1" maxlength="24">'+
+        '<label style="font-size:12px;white-space:nowrap"><input type="checkbox" data-i="'+i+'" data-f="aktif"'+(p.aktif?' checked':'')+'> aktif</label>'+
+        '<button data-act="up" data-i="'+i+'">▲</button><button data-act="down" data-i="'+i+'">▼</button><button data-act="del" data-i="'+i+'" style="background:#7f1d1d">✕</button></div>'+
+        '<select data-i="'+i+'" data-f="tipe" style="'+IN+'"><option value="gemini"'+(o?'':' selected')+'>Jenis: Google Gemini</option><option value="openai"'+(o?' selected':'')+'>Jenis: OpenAI-compatible (Groq, OpenRouter, Mistral, dll)</option></select>'+
+        '<input type="password" autocomplete="off" data-i="'+i+'" data-f="key" value="'+A(p.key)+'" placeholder="API Key" style="'+IN+'">'+
+        '<input data-i="'+i+'" data-f="model" value="'+A(p.model)+'" placeholder="'+(o?'Nama model (wajib)':'Nama model (kosongkan = otomatis)')+'" style="'+IN+'">'+
+        (o?'<input data-i="'+i+'" data-f="url" value="'+A(p.url)+'" placeholder="Alamat API (contoh https://api.groq.com/openai/v1)" style="'+IN+'">':'')+
+      '</div>';
+    }
+    function draw(){
+      var t=ov.scrollTop;
+      ov.innerHTML='<div style="max-width:520px;margin:0 auto;color:#eee;font-size:13px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:15px">Atur AI</b><button data-act="close" style="background:#444">✕ Tutup</button></div>'+
+        '<div style="font-size:12px;opacity:.85;margin-bottom:8px">Urutan = urutan dicoba. Kalau AI no.1 gagal (sibuk / kuota habis), otomatis pindah ke no.2, dan seterusnya. Pakai penyedia berbeda supaya kuotanya terpisah. Key disimpan di browser perangkat ini saja.</div>'+
+        (W.length?W.map(card).join(''):'<div style="padding:14px;text-align:center;opacity:.8">Belum ada AI. Tambahkan di bawah.</div>')+
+        '<div style="display:flex;gap:6px;margin:8px 0"><select id="aiMgrPre" style="'+IN+';margin:0;flex:1"><option value="gemini">Gemini</option><option value="groq">Groq</option><option value="openrouter">OpenRouter</option><option value="mistral">Mistral</option><option value="lain">Lainnya (isi sendiri)</option></select><button data-act="add" style="background:#6d28d9;color:#fff">+ Tambah</button></div>'+
+        '<button data-act="save" style="background:#16a34a;color:#fff;width:100%;padding:10px">Simpan</button></div>';
+      ov.scrollTop=t;
+    }
+    ov.addEventListener('input',function(e){var t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT'||!t.getAttribute('data-f'))return;W[+t.getAttribute('data-i')][t.getAttribute('data-f')]=t.value;});
+    ov.addEventListener('change',function(e){
+      var t=e.target,f=t.getAttribute&&t.getAttribute('data-f');if(!f)return;
+      var p=W[+t.getAttribute('data-i')];
+      if(t.type==='checkbox'){p.aktif=t.checked;}
+      else if(f==='tipe'){p.tipe=t.value;draw();}
+    });
+    ov.addEventListener('click',function(e){
+      var t=e.target,act=t.getAttribute&&t.getAttribute('data-act');if(!act)return;
+      var i=+t.getAttribute('data-i');
+      if(act==='close'){ov.parentNode.removeChild(ov);}
+      else if(act==='up'&&i>0){W.splice(i-1,0,W.splice(i,1)[0]);draw();}
+      else if(act==='down'&&i<W.length-1){W.splice(i+1,0,W.splice(i,1)[0]);draw();}
+      else if(act==='del'){if(confirm('Hapus "'+W[i].nama+'" dari daftar?')){W.splice(i,1);draw();}}
+      else if(act==='add'){
+        if(W.length>=MAXP){alert('Maksimal '+MAXP+' penyedia AI.');return;}
+        var pr=PRESETS[$('aiMgrPre').value]||PRESETS.lain,c=cleanProv(pr);c.id=pid();W.push(c);draw();
+      }
+      else if(act==='save'){
+        var bad=W.filter(function(p){return p.aktif&&!provOk(p);}).map(function(p){return p.nama;});
+        saveProv(W.map(cleanProv).filter(Boolean));
+        ov.parentNode.removeChild(ov);
+        toast(bad.length?'Tersimpan. Belum lengkap (dilewati): '+bad.join(', '):'Pengaturan AI tersimpan ✔');
+      }
+    });
+    draw();
+  }
   function send(){
     var cmd=$('aiCmd').value.trim();if(!cmd)return;
-    if(!getKey()){askKey();if(!getKey())return;}
+    if(!activeProv().length){show('Belum ada AI yang diatur. Isi dulu di "Atur AI".');openMgr();return;}
     show('Memproses…');plan=null;
-    gcall({systemInstruction:{parts:[{text:SYS}]},
-      contents:[{role:'user',parts:[{text:'Keadaan: '+state()+'\nPerintah: '+cmd}]}],
-      generationConfig:{responseMimeType:'application/json',temperature:0}})
-    .then(function(d){
-      var j=JSON.parse(d.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
+    askAI('Keadaan: '+state()+'\nPerintah: '+cmd)
+    .then(function(txt){
+      var j=pjson(txt);
       var steps=(j.langkah||[]).map(clean).filter(Boolean);
       if(!steps.length){show('<div>'+esc(j.ringkas||'Perintah belum bisa dipahami.')+'</div>');return;}
       plan=steps;
@@ -5871,7 +6015,7 @@ UJI YANG BELUM SEMPAT DILAKUKAN
         })();
       };
       $('aiNo').onclick=function(){plan=null;show('');};
-    }).catch(function(e){show(e.busy?esc(e.message):'Gagal: '+esc(e.message));});
+    }).catch(function(e){show((e.busy?esc(e.message):'Gagal: '+esc(e.message)).replace(/\n/g,'<br>'));});
   }
   function renderList(){
     var P=photos();
@@ -5887,19 +6031,19 @@ UJI YANG BELUM SEMPAT DILAKUKAN
   }
   $('btnAiDock').onclick=function(){if($('aiPanel').classList.contains('show'))closePanel();else openPanel();};
   $('aiClose').onclick=closePanel;
-  $('aiKeyLink').onclick=function(e){e.preventDefault();askKey();};
+  $('aiKeyLink').onclick=function(e){e.preventDefault();openMgr();};
 
   /* [v29] Tautan pindah pengaturan: API key Gemini + remove.bg + Ukuran Saya ikut ke perangkat lain.
      Data ditaruh di bagian #pindah=... pada alamat (bagian # tidak dikirim ke server). Dibuka di perangkat tujuan -> konfirmasi -> masuk. */
   function b64e(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
   function b64d(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';return JSON.parse(decodeURIComponent(escape(atob(t))));}
   function buildMoveLink(){
-    var d={v:1,g:getKey(),r:getRemoveBgApiKey(),u:customSizes.map(function(s){return [s.name||'',s.w,s.h];})};
+    var d={v:1,g:getKey(),p:loadProv().map(function(p){return {nama:p.nama,tipe:p.tipe,key:p.key,model:p.model,url:p.url,aktif:p.aktif};}),r:getRemoveBgApiKey(),u:customSizes.map(function(s){return [s.name||'',s.w,s.h];})};
     return location.href.split('#')[0]+'#pindah='+b64e(d);
   }
   $('aiMoveLink').onclick=function(e){
     e.preventDefault();
-    if(!getKey()&&!getRemoveBgApiKey()&&!customSizes.length){toast('Belum ada pengaturan untuk disalin');return;}
+    if(!loadProv().length&&!getRemoveBgApiKey()&&!customSizes.length){toast('Belum ada pengaturan untuk disalin');return;}
     var link=buildMoveLink();
     function ok(){toast('Tautan disalin. Kirim ke diri sendiri saja (berisi API key)');}
     if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(ok,function(){prompt('Salin tautan ini (berisi API key, jangan dibagikan):',link);});}
@@ -5911,8 +6055,12 @@ UJI YANG BELUM SEMPAT DILAKUKAN
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
     if(!d||d.v!==1){alert('Tautan pengaturan rusak atau tidak lengkap.');return;}
     var jml=Array.isArray(d.u)?d.u.length:0;
-    if(!confirm('Tautan pengaturan terdeteksi.\n\nMasukkan ke perangkat ini?\n'+(d.g?'• API Key Gemini\n':'')+(d.r?'• API Key remove.bg\n':'')+(jml?'• '+jml+' Ukuran Saya (ukuran yang sudah ada tidak diganda)\n':'')))return;
-    if(d.g&&typeof d.g==='string'){try{localStorage.setItem(KEY,d.g.trim());}catch(e){}}
+    if(!confirm('Tautan pengaturan terdeteksi.\n\nMasukkan ke perangkat ini?\n'+(Array.isArray(d.p)&&d.p.length?'• '+d.p.length+' penyedia AI (ditambahkan ke daftar)\n':(d.g?'• API Key Gemini\n':''))+(d.r?'• API Key remove.bg\n':'')+(jml?'• '+jml+' Ukuran Saya (ukuran yang sudah ada tidak diganda)\n':'')))return;
+    var cur=loadProv(),np=0;
+    function addP(c){if(!c||!c.key||cur.length>=MAXP||cur.some(function(x){return x.tipe===c.tipe&&x.key===c.key;}))return;c.id=pid();cur.push(c);np++;}
+    if(Array.isArray(d.p))d.p.forEach(function(r){addP(cleanProv(r));});
+    else if(d.g&&typeof d.g==='string')addP(cleanProv({nama:'Gemini',tipe:'gemini',key:d.g}));
+    if(np)saveProv(cur);
     if(d.r&&typeof d.r==='string')saveRemoveBgApiKey(d.r.trim());
     var add=0;
     if(jml){
