@@ -850,6 +850,8 @@
         <input type="text" id="syncCode" placeholder="Tempel kode, atau buat baru" autocomplete="off">
         <div class="sy-row"><button type="button" class="btn btn-reset" id="syncGen">🎲 Buat kode baru</button><button type="button" class="btn btn-save" id="syncConnect">Simpan &amp; hubungkan</button></div>
         <div class="sy-row"><button type="button" class="btn btn-reset" id="syncNowBtn">🔄 Sinkron sekarang</button><button type="button" class="btn btn-reset" id="syncLinkBtn">🔗 Salin tautan sinkron</button><button type="button" class="btn btn-reset" id="syncOff">Putuskan</button></div>
+        <div class="sy-row"><button type="button" class="btn btn-reset" id="syncRestoreBtn">📂 Pulihkan dari file cadangan</button></div>
+        <input type="file" id="syncRestoreInput" accept=".json,.txt,application/json,text/plain" style="display:none">
         <p class="sy-note">Yang disinkronkan: Preset Susunan, Ukuran Saya, Catatan Saya, API key AI dan remove.bg. Foto dan proyek tidak ikut. Rahasiakan kode dan tautan, karena berisi akses ke API key.</p>
       </section>
       <section class="sheet" id="sheetNotes">
@@ -1221,6 +1223,12 @@
         }));
       } catch (err) {
         console.error('Gagal menyimpan tab kerja:', err);
+        try {
+          if (!window._quotaWarned) {
+            window._quotaWarned = true;
+            alert('Penyimpanan otomatis di perangkat ini penuh (foto terlalu banyak/besar), jadi pekerjaan terbaru belum tersimpan otomatis.\n\nSimpan proyek (.json) sekarang supaya aman, atau hapus tab/foto yang tidak dipakai.');
+          }
+        } catch (e2) {}
       }
     }
 
@@ -2459,8 +2467,10 @@
       }
     }
 
+    var photoUploadBusy = false;
     function processPhotoUpload() {
       var fileInput = document.getElementById('imageInput');
+      if (photoUploadBusy) return;
       if (!fileInput.files || fileInput.files.length === 0) {
         alert("Pilih file foto terlebih dahulu!");
         return;
@@ -2468,24 +2478,56 @@
 
       saveState();
       var files = Array.from(fileInput.files);
-      var loadedCount = 0;
+      var btn = document.getElementById('btnAddPhoto');
+      var btnText = btn ? btn.textContent : '';
+      var failed = [];
+      var idx = 0;
+      photoUploadBusy = true;
 
-      files.forEach(function(file) {
+      function finish() {
+        photoUploadBusy = false;
+        fileInput.value = "";
+        if (btn) { btn.disabled = false; btn.textContent = btnText; }
+        if (failed.length) {
+          alert(failed.length + ' foto gagal dimasukkan:\n- ' + failed.slice(0, 8).join('\n- ') +
+            '\n\nPenyebab umum: format tidak didukung (mis. HEIC/HEIF) atau file rusak. Coba simpan ulang sebagai JPG/PNG, atau di tablet pilih format "Paling Kompatibel" pada pengaturan kamera.');
+        }
+      }
+
+      // Satu foto per giliran supaya memori tablet tidak penuh dan tombol tidak "diam".
+      function next() {
+        if (idx >= files.length) { finish(); return; }
+        var file = files[idx++];
+        if (btn) { btn.disabled = true; btn.textContent = 'Memproses ' + idx + '/' + files.length + '...'; }
+        var settled = false;
+        function done(ok) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(guard);
+          if (!ok) failed.push(file.name || ('foto ' + idx));
+          setTimeout(next, 30);
+        }
+        var guard = setTimeout(function() { done(false); }, 45000);
         var reader = new FileReader();
+        reader.onerror = function() { done(false); };
         reader.onload = function(e) {
           var img = new Image();
-          img.src = e.target.result;
+          img.onerror = function() { done(false); };
           img.onload = function() {
-            var resized = downscaleImageIfNeeded(img);
-            addParsedPhotoToCanvas(resized.dataUrl, resized.w, resized.h);
-            loadedCount++;
-            if (loadedCount === files.length) {
-              fileInput.value = "";
+            try {
+              var resized = downscaleImageIfNeeded(img);
+              addParsedPhotoToCanvas(resized.dataUrl, resized.w, resized.h);
+              done(true);
+            } catch (err) {
+              console.error('Gagal memasukkan foto:', err);
+              done(false);
             }
           };
+          img.src = e.target.result;
         };
         reader.readAsDataURL(file);
-      });
+      }
+      next();
     }
 
     function addParsedPhotoToCanvas(base64Data, natW, natH) {
@@ -5608,7 +5650,7 @@
   </style>
   <script>
   (function() {
-    var SYNC_API_URL = 'GANTI_DENGAN_URL_WEB_APP_SINKRON';
+    var SYNC_API_URL = 'https://script.google.com/macros/s/AKfycbyf_P_SZDnO2Ixr8kPzyspCAsmgRdwqmx5ZnCWs7rZIOjBaXrY5ig-MKzzCBJSmlPl8/exec';
     var SK_URL = 'layoutFotoSyncUrlV1', SK_CODE = 'layoutFotoSyncCodeV1', SK_LAST = 'layoutFotoSyncLastV1';
     var K = { sizes: 'layoutFotoCustomSizesV1', rbg: 'layoutFotoRemoveBgApiKey', prov: 'layoutFotoAiProvidersV1', gem: 'layoutFotoGeminiApiKey', pre: 'layoutFotoPresetV1', not: 'layoutFotoCatatanV1' };
     var busy = false, dirtyTimer = null, st = 'off', stMsg = '', lastOk = 0, tHandle = null;
@@ -5625,7 +5667,8 @@
     }
     function srvUrl() { return (SYNC_API_URL && SYNC_API_URL.indexOf('GANTI_DENGAN') === -1) ? SYNC_API_URL : (lsGet(SK_URL) || ''); }
     function code() { return lsGet(SK_CODE) || ''; }
-    function ready() { return !!srvUrl() && code().length >= 10; }
+    function ready() { return !!srvUrl() && code().length >= 6; }
+    function wireCode() { var c = code(); return c.length >= 10 ? c : 'lf~' + c + '~sinkron'; }
     function snap() {
       var p = pj(K.pre), s = pj(K.sizes), a = pj(K.prov), n = pj(K.not);
       return { n: Array.isArray(n) ? n : [], p: Array.isArray(p) ? p : [], s: Array.isArray(s) ? s : [], a: Array.isArray(a) ? a : null, g: lsGet(K.gem) || '', r: lsGet(K.rbg) || '' };
@@ -5673,9 +5716,9 @@
       opt = opt || {}; opt.signal = c.signal;
       return fetch(u, opt).then(function(r) { clearTimeout(t); return r.json(); }, function(e) { clearTimeout(t); throw e; });
     }
-    function srvGet() { return tfetch(srvUrl() + (srvUrl().indexOf('?') < 0 ? '?' : '&') + 'action=get&code=' + encodeURIComponent(code())); }
+    function srvGet() { return tfetch(srvUrl() + (srvUrl().indexOf('?') < 0 ? '?' : '&') + 'action=get&code=' + encodeURIComponent(wireCode())); }
     function srvPut(data, base) {
-      return tfetch(srvUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'put', code: code(), base: base, data: data }) });
+      return tfetch(srvUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'put', code: wireCode(), base: base, data: data }) });
     }
     function setSt(s, m) { st = s; stMsg = m || ''; paint(); }
     function paint() {
@@ -5721,9 +5764,9 @@
     function b64e(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
     function b64d(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; return JSON.parse(decodeURIComponent(escape(atob(t)))); }
     function genCode() {
-      var ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(20), o = '';
+      var ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(8), o = '';
       (window.crypto || window.msCrypto).getRandomValues(a);
-      for (var i = 0; i < 20; i++) { o += ch[a[i] % ch.length]; if (i % 4 === 3 && i < 19) o += '-'; }
+      for (var i = 0; i < 8; i++) o += ch[a[i] % ch.length];
       return o;
     }
     function connect() {
@@ -5732,7 +5775,7 @@
         if (!/^https:\/\//i.test(u)) { say('Alamat server harus diawali https://'); return; }
         lsSet(SK_URL, u);
       }
-      if (c.length < 10) { say('Kode Sinkron minimal 10 karakter'); return; }
+      if (c.length < 6) { say('Kode Sinkron minimal 6 karakter'); return; }
       if (c !== code()) lsDel(SK_LAST);
       lsSet(SK_CODE, c);
       paint(); syncNow();
@@ -5751,7 +5794,7 @@
       if (!m) return;
       var d = null; try { d = b64d(m[1]); } catch (e) {}
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-      if (!d || d.v !== 1 || typeof d.c !== 'string' || d.c.length < 10) { alert('Tautan sinkron rusak atau tidak lengkap.'); return; }
+      if (!d || d.v !== 1 || typeof d.c !== 'string' || d.c.length < 6) { alert('Tautan sinkron rusak atau tidak lengkap.'); return; }
       if (!confirm('Tautan sinkron terdeteksi.\n\nHubungkan perangkat ini? Data dari perangkat lain digabung dengan data di sini (preset, ukuran, API key).')) return;
       if (typeof d.u === 'string' && /^https:\/\//i.test(d.u)) lsSet(SK_URL, d.u);
       if (d.c !== code()) lsDel(SK_LAST);
@@ -5763,6 +5806,22 @@
       if (!sh) return;
       $('syncGen').onclick = function() { $('syncCode').value = genCode(); };
       $('syncConnect').onclick = connect;
+      $('syncRestoreBtn').onclick = function() { $('syncRestoreInput').click(); };
+      $('syncRestoreInput').onchange = function() {
+        var f = this.files && this.files[0]; this.value = '';
+        if (!f) return;
+        var r = new FileReader();
+        r.onload = function() {
+          try {
+            var o = JSON.parse(r.result), d = (o && o.data && typeof o.data === 'object') ? o.data : o;
+            if (!d || (!d.p && !d.s && !d.n && !d.a && !d.g && !d.r)) throw new Error('bukan cadangan');
+            apply(merge(snap(), d));
+            say('Data dari file cadangan sudah digabung ke perangkat ini');
+            if (ready()) syncNow();
+          } catch (e) { say('File tidak dikenali sebagai cadangan Sinkron'); }
+        };
+        r.readAsText(f);
+      };
       $('syncNowBtn').onclick = function() { if (!ready()) { say('Hubungkan dulu'); return; } syncNow(); };
       $('syncLinkBtn').onclick = copyLink;
       $('syncOff').onclick = function() {
