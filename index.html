@@ -2467,10 +2467,8 @@
       }
     }
 
-    var photoUploadBusy = false;
     function processPhotoUpload() {
       var fileInput = document.getElementById('imageInput');
-      if (photoUploadBusy) return;
       if (!fileInput.files || fileInput.files.length === 0) {
         alert("Pilih file foto terlebih dahulu!");
         return;
@@ -2478,56 +2476,24 @@
 
       saveState();
       var files = Array.from(fileInput.files);
-      var btn = document.getElementById('btnAddPhoto');
-      var btnText = btn ? btn.textContent : '';
-      var failed = [];
-      var idx = 0;
-      photoUploadBusy = true;
+      var loadedCount = 0;
 
-      function finish() {
-        photoUploadBusy = false;
-        fileInput.value = "";
-        if (btn) { btn.disabled = false; btn.textContent = btnText; }
-        if (failed.length) {
-          alert(failed.length + ' foto gagal dimasukkan:\n- ' + failed.slice(0, 8).join('\n- ') +
-            '\n\nPenyebab umum: format tidak didukung (mis. HEIC/HEIF) atau file rusak. Coba simpan ulang sebagai JPG/PNG, atau di tablet pilih format "Paling Kompatibel" pada pengaturan kamera.');
-        }
-      }
-
-      // Satu foto per giliran supaya memori tablet tidak penuh dan tombol tidak "diam".
-      function next() {
-        if (idx >= files.length) { finish(); return; }
-        var file = files[idx++];
-        if (btn) { btn.disabled = true; btn.textContent = 'Memproses ' + idx + '/' + files.length + '...'; }
-        var settled = false;
-        function done(ok) {
-          if (settled) return;
-          settled = true;
-          clearTimeout(guard);
-          if (!ok) failed.push(file.name || ('foto ' + idx));
-          setTimeout(next, 30);
-        }
-        var guard = setTimeout(function() { done(false); }, 45000);
+      files.forEach(function(file) {
         var reader = new FileReader();
-        reader.onerror = function() { done(false); };
         reader.onload = function(e) {
           var img = new Image();
-          img.onerror = function() { done(false); };
+          img.src = e.target.result;
           img.onload = function() {
-            try {
-              var resized = downscaleImageIfNeeded(img);
-              addParsedPhotoToCanvas(resized.dataUrl, resized.w, resized.h);
-              done(true);
-            } catch (err) {
-              console.error('Gagal memasukkan foto:', err);
-              done(false);
+            var resized = downscaleImageIfNeeded(img);
+            addParsedPhotoToCanvas(resized.dataUrl, resized.w, resized.h);
+            loadedCount++;
+            if (loadedCount === files.length) {
+              fileInput.value = "";
             }
           };
-          img.src = e.target.result;
         };
         reader.readAsDataURL(file);
-      }
-      next();
+      });
     }
 
     function addParsedPhotoToCanvas(base64Data, natW, natH) {
